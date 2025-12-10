@@ -149,6 +149,9 @@ class ZipPath(PurePosixPath):
 
     @classmethod
     def at_path(cls, source_path: Path, dest_path: Path = None) -> ZipPath:
+        """
+        ZIP archive creator, returning a ZipPath object for the newly-created ZIP archive
+        """
         if dest_path is None:
             dest = source_path.parent / f"{source_path.stem}.zip"
         else:
@@ -157,7 +160,7 @@ class ZipPath(PurePosixPath):
         if dest.exists():
             return ZipPath(dest)
         else:
-            print(f"Creating {dest}")
+            # print(f"Creating {dest}")
             with zipfile.ZipFile(
                 dest,
                 mode="w",
@@ -166,7 +169,7 @@ class ZipPath(PurePosixPath):
             ) as new_zf:
                 for file in source_path.rglob("*"):
                     if file.is_file():
-                        print(f"adding {file}")
+                        # print(f"adding {file}")
                         new_zf.write(
                             file,
                             file.relative_to(source_path.parent),
@@ -175,10 +178,16 @@ class ZipPath(PurePosixPath):
             return ret
 
     @property
-    def depth(self):
+    def _depth(self):
+        """Internal property for recursion and tree formatting"""
         return self._path.count("/")
 
     def is_valid(self) -> bool:
+        """
+        Validation function to confirm that a ZipPath object is valid and the
+        zip file exists.
+        :return:
+        """
         try:
             self._get_zipfile()
         except Exception:
@@ -196,10 +205,10 @@ class ZipPath(PurePosixPath):
 
     def _get_zipfile(self) -> zipfile.ZipFile:
         """
-        Open the ZIP file.
+        Internal method to return the ZIP file that underlies the ZipPath object's file model.
 
         Returns:
-            An open ZipFile object
+            An open zipfile.ZipFile object
 
         Raises:
             FileNotFoundError: If the ZIP file doesn't exist
@@ -220,9 +229,7 @@ class ZipPath(PurePosixPath):
             Normalized path
         """
         # Remove leading slash if present
-        if path.startswith('/'):
-            path = path[1:]
-        return path
+        return path.removeprefix("/")
 
     def joinpath(self, *paths: str) -> ZipPath:
         """
@@ -309,6 +316,9 @@ class ZipPath(PurePosixPath):
         if not self.zip_file.exists():
             return False
 
+        if self.is_root():
+            return True
+
         try:
             with self._get_zipfile() as zf:
                 # Root directory
@@ -333,6 +343,13 @@ class ZipPath(PurePosixPath):
                 return False
         except zipfile.BadZipFile:
             return False
+
+    def is_root(self) -> bool:
+        """
+        Boolean function for determining if the ZipPath object is at the root of
+        the ZIP archive.
+        """
+        return self._path == ''
 
     def iterdir(self) -> Iterator[ZipPath]:
         """
