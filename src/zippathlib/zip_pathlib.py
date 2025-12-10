@@ -1,0 +1,593 @@
+#!/usr/bin/env python
+"""
+ZipPath - A pathlib.Path subclass for accessing files in ZIP archives
+
+This module provides a standalone utility class for working with files inside
+ZIP archives using a familiar pathlib-like interface.
+"""
+from __future__ import annotations
+
+import fnmatch
+import io
+from pathlib import Path, PurePosixPath
+from typing import Union, Iterator, Optional, BinaryIO, TextIO, Any
+import zipfile
+
+
+class _ZipWriteFile:
+    """
+    A file-like object for writing to a file within a ZIP archive.
+
+    This class buffers written data and updates the ZIP file when closed.
+    """
+
+    def __init__(self, zip_path: ZipPath, mode: str, encoding: Optional[str] = None):
+        """
+        Initialize a _ZipWriteFile object.
+
+        Args:
+            zip_path: The ZipPath object representing the file to write
+            mode: The file mode ('w', 'wb', 'a', 'ab')
+            encoding: Text encoding for text modes
+        """
+        self.zip_path = zip_path
+        self.mode = mode
+        self.encoding = encoding
+        self.closed = False
+
+        # Create the appropriate buffer based on mode
+        if 'b' in mode:  # Binary mode
+            self.buffer = io.BytesIO()
+        else:  # Text mode
+            self.buffer = io.StringIO()
+
+        # Check if we're appending and the file exists
+        if 'a' in mode and zip_path.is_file():
+            # Read existing content
+            if 'b' in mode:
+                existing_data = zip_path.read_bytes()
+                self.buffer.write(existing_data)
+            else:
+                existing_text = zip_path.read_text(encoding=encoding or 'utf-8')
+                self.buffer.write(existing_text)
+
+    def write(self, data: Union[str, bytes]) -> int:
+        """
+        Write data to the buffer.
+
+        Args:
+            data: The data to write
+
+        Returns:
+            Number of characters/bytes written
+
+        Raises:
+            ValueError: If the file is closed
+        """
+        if self.closed:
+            raise ValueError("I/O operation on closed file")
+        return self.buffer.write(data)
+
+    def close(self) -> None:
+        """
+        Close the file and update the ZIP archive.
+        """
+        if self.closed:
+            return
+
+        self.buffer.seek(0)
+
+        # Get the data from the buffer
+        if 'b' in self.mode:  # Binary mode
+            data = self.buffer.read()
+        else:  # Text mode
+            text = self.buffer.read()
+            data = text.encode(self.encoding or 'utf-8')
+
+        # Update the ZIP file
+        normalized_path = self.zip_path._normalize_path(self.zip_path._path)
+
+        # Open the ZIP file in append mode
+        with zipfile.ZipFile(
+            self.zip_path.zip_file,
+            mode='a',
+            compression=zipfile.ZIP_DEFLATED,
+            compresslevel=9,
+        ) as zf:
+            zf.writestr(normalized_path, data)
+
+        self.closed = True
+        self.buffer.close()
+
+    def __enter__(self) -> '_ZipWriteFile':
+        """Context manager enter method."""
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        """Context manager exit method."""
+        self.close()
+
+
+class ZipPath(PurePosixPath):
+    """
+    A pathlib.Path-like interface to files within a ZIP archive.
+
+    This class allows you to navigate and access files within a ZIP archive
+    using a familiar pathlib-like interface. It handles the details of opening
+    and closing the ZIP file as needed.
+
+    Examples:
+        # Open a file from a ZIP archive
+        zip_path = ZipPath('archive.zip', 'path/to/file.txt')
+        with zip_path.open() as f:
+            content = f.read()
+
+        # List all files in a directory within the ZIP
+        zip_path = ZipPath('archive.zip', 'some/directory')
+        for file in zip_path.iterdir():
+            print(file)
+
+        # Check if a file exists in the ZIP
+        if ZipPath('archive.zip', 'path/to/file.txt').exists():
+            print("File exists!")
+    """
+
+    def __init__(self, zip_file: Union[str, Path], path: str = '', mode="r") -> None:
+        """
+        Initialize a ZipPath object.
+
+        Args:
+            zip_file: Path to the ZIP file
+            path: Path within the ZIP file (default: root of the ZIP)
+        """
+        super().__init__(path)
+        self.zip_file = Path(zip_file)
+        self._path = path
+        self._mode = mode
+
+    @classmethod
+    def at_path(cls, source_path: Path, dest_path: Path = None) -> ZipPath:
+        if dest_path is None:
+            dest = source_path.parent / f"{source_path.stem}.zip"
+        else:
+            dest = dest_path
+
+        if dest.exists():
+            return ZipPath(dest)
+        else:
+            print(f"Creating {dest}")
+            with zipfile.ZipFile(
+                dest,
+                mode="w",
+                compression=zipfile.ZIP_DEFLATED,
+                compresslevel=9,
+            ) as new_zf:
+                for file in source_path.rglob("*"):
+                    if file.is_file():
+                        print(f"adding {file}")
+                        new_zf.write(
+                            file,
+                            file.relative_to(source_path.parent),
+                        )
+            ret = ZipPath(dest)
+            return ret
+
+    @property
+    def depth(self):
+        return self._path.count("/")
+
+    def is_valid(self) -> bool:
+        try:
+            self._get_zipfile()
+        except Exception:
+            return False
+        else:
+            return True
+
+    def __str__(self) -> str:
+        """Return a string representation of the path."""
+        return f"{self.zip_file}::{self._path}"
+
+    def __repr__(self) -> str:
+        """Return a detailed string representation of the path."""
+        return f"ZipPath('{self.zip_file}', '{self._path}')"
+
+    def _get_zipfile(self) -> zipfile.ZipFile:
+        """
+        Open the ZIP file.
+
+        Returns:
+            An open ZipFile object
+
+        Raises:
+            FileNotFoundError: If the ZIP file doesn't exist
+            zipfile.BadZipFile: If the file is not a valid ZIP file
+        """
+        if not self.zip_file.exists():
+            raise FileNotFoundError(f"ZIP file not found: '{self.zip_file}'")
+        return zipfile.ZipFile(self.zip_file, mode=self._mode)
+
+    def _normalize_path(self, path: str) -> str:
+        """
+        Normalize a path within the ZIP file.
+
+        Args:
+            path: Path to normalize
+
+        Returns:
+            Normalized path
+        """
+        # Remove leading slash if present
+        if path.startswith('/'):
+            path = path[1:]
+        return path
+
+    def joinpath(self, *paths: str) -> ZipPath:
+        """
+        Join this path with one or more path components.
+
+        Args:
+            *paths: Path components to join
+
+        Returns:
+            A new ZipPath object with the joined path
+        """
+        new_path = PurePosixPath(self._path).joinpath(*paths)
+        return ZipPath(self.zip_file, str(new_path), mode=self._mode)
+
+    def __truediv__(self, key: str) -> ZipPath:
+        """
+        Join this path with another using the / operator.
+
+        Args:
+            key: Path component to join
+
+        Returns:
+            A new ZipPath object with the joined path
+        """
+        return self.joinpath(key)
+
+    def exists(self) -> bool:
+        """
+        Check if this path exists in the ZIP file.
+
+        Returns:
+            True if the path exists, False otherwise
+        """
+        if not self.zip_file.exists():
+            return False
+
+        try:
+            with self._get_zipfile() as zf:
+                # For the root directory
+                if not self._path:
+                    return True
+
+                # For files
+                normalized_path = self._normalize_path(self._path)
+                if normalized_path in zf.namelist():
+                    return True
+
+                # For directories (check if any file starts with this path)
+                if not normalized_path.endswith('/'):
+                    normalized_path += '/'
+
+                for name in zf.namelist():
+                    if name.startswith(normalized_path):
+                        return True
+
+                return False
+        except zipfile.BadZipFile:
+            return False
+
+    def is_file(self) -> bool:
+        """
+        Check if this path is a file in the ZIP archive.
+
+        Returns:
+            True if the path is a file, False otherwise
+        """
+        if not self.zip_file.exists():
+            return False
+
+        try:
+            with self._get_zipfile() as zf:
+                normalized_path = self._normalize_path(self._path)
+                return normalized_path in zf.namelist() and not normalized_path.endswith('/')
+        except zipfile.BadZipFile:
+            return False
+
+    def is_dir(self) -> bool:
+        """
+        Check if this path is a directory in the ZIP archive.
+
+        Returns:
+            True if the path is a directory, False otherwise
+        """
+        if not self.zip_file.exists():
+            return False
+
+        try:
+            with self._get_zipfile() as zf:
+                # Root directory
+                if not self._path:
+                    return True
+
+                normalized_path = self._normalize_path(self._path)
+
+                # Explicit directory entry
+                if normalized_path.endswith('/'):
+                    return normalized_path in zf.namelist()
+                else:
+                    dir_path = normalized_path + '/'
+                    if dir_path in zf.namelist():
+                        return True
+
+                # Implicit directory (contains files)
+                for name in zf.namelist():
+                    if name.startswith(dir_path):
+                        return True
+
+                return False
+        except zipfile.BadZipFile:
+            return False
+
+    def iterdir(self) -> Iterator[ZipPath]:
+        """
+        Iterate over the files and directories in this directory.
+
+        Returns:
+            An iterator of ZipPath objects
+
+        Raises:
+            NotADirectoryError: If this path is not a directory
+        """
+        if not self.is_dir():
+            raise NotADirectoryError(f"Not a directory: {self}")
+
+        with self._get_zipfile() as zf:
+            prefix = self._normalize_path(self._path)
+            if prefix and not prefix.endswith('/'):
+                prefix += '/'
+
+            # Track directories we've seen to avoid duplicates
+            seen_dirs = set()
+
+            for name in zf.namelist():
+                if name.startswith(prefix):
+                    # Get the relative path from the current directory
+                    rel_path = name[len(prefix):]
+                    if not rel_path:
+                        continue
+
+                    # Get the first component of the relative path
+                    parts = rel_path.split('/', 1)
+                    first_part = parts[0]
+
+                    if len(parts) > 1:  # This is a subdirectory
+                        if first_part not in seen_dirs:
+                            seen_dirs.add(first_part)
+                            yield ZipPath(self.zip_file, f"{prefix}{first_part}", mode=self._mode)
+                    else:  # This is a file
+                        yield ZipPath(self.zip_file, f"{prefix}{first_part}", mode=self._mode)
+
+    def glob(self, pattern: str) -> Iterator[ZipPath]:
+        """
+        Iterate over paths matching a glob pattern.
+
+        Args:
+            pattern: Glob pattern to match
+
+        Returns:
+            An iterator of ZipPath objects matching the pattern
+        """
+        with self._get_zipfile() as zf:
+            prefix = self._normalize_path(self._path)
+            if prefix and not prefix.endswith('/'):
+                prefix += '/'
+
+            if pattern.startswith("**/"):
+                list_src = zf.namelist()
+                pattern = pattern.removeprefix("**/")
+            else:
+                list_src = [str(p).partition("::")[-1] for p in self.iterdir()]
+
+            for name in list_src:
+                if name.startswith(prefix):
+                    # Get the relative path from the current directory
+                    rel_path = name[len(prefix):]
+                    if not rel_path:
+                        continue
+
+                    # Check if it matches the pattern
+                    if fnmatch.fnmatch(rel_path, pattern):
+                        yield ZipPath(self.zip_file, f"{prefix}{rel_path}")
+
+    def riterdir(self) -> Iterator[ZipPath]:
+        """
+        Recursive iterator listing all files and directories in this directory and its subdirectories.
+        """
+        to_visit: list[ZipPath] = [self]
+        while to_visit:
+            current = to_visit.pop()
+            yield current
+            if current.is_dir():
+                for entry in current.iterdir():
+                    to_visit.append(entry)
+
+    def rglob(self, pattern: str) -> Iterator[ZipPath]:
+        """
+        Recursive glob iterator listing all files and directories in this directory and its subdirectories
+        that match the given pattern.
+
+        Args:
+            pattern: Glob pattern to match
+
+        Returns:
+            An iterator of ZipPath objects matching the pattern
+        """
+        for path in self.riterdir():
+            if fnmatch.fnmatch(path.name(), pattern):
+                yield path
+
+    def __iter__(self):
+        return (line for line in self.read_text().splitlines())
+
+    def open(self, mode: str = 'r', encoding: Optional[str] = None) -> Union[BinaryIO, TextIO]:
+        """
+        Open the file pointed to by this path.
+
+        Args:
+            mode: Open mode ('r', 'rb', 'w', 'wb', etc.)
+            encoding: Text encoding (for text modes)
+
+        Returns:
+            A file-like object
+
+        Raises:
+            FileNotFoundError: If the file doesn't exist in read mode
+            IsADirectoryError: If the path points to a directory
+        """
+        # Reading modes
+        if 'r' in mode and not any(c in mode for c in 'wa'):
+            if not self.is_file():
+                if self.is_dir():
+                    raise IsADirectoryError(f"Is a directory: {self}")
+                raise FileNotFoundError(f"File not found in ZIP: {self}")
+
+            with self._get_zipfile() as zf:
+                normalized_path = self._normalize_path(self._path)
+                file_data = zf.read(normalized_path)
+
+            if 'b' in mode:  # Binary mode
+                return io.BytesIO(file_data)
+            else:  # Text mode
+                encoding = encoding or 'utf-8'
+                return io.StringIO(file_data.decode(encoding))
+
+        # Writing modes
+        elif any(c in mode for c in 'wa'):
+            if self.is_dir():
+                raise IsADirectoryError(f"Is a directory: {self}")
+
+            # For writing, we return a custom file-like object that will update the ZIP when closed
+            if 'b' in mode:  # Binary mode
+                return _ZipWriteFile(self, mode, None)
+            else:  # Text mode
+                encoding = encoding or 'utf-8'
+                return _ZipWriteFile(self, mode, encoding)
+
+        else:
+            raise ValueError(f"Unsupported file mode: {mode}")
+
+    def read_text(self, encoding: str = 'utf-8') -> str:
+        """
+        Read the contents of this file as text.
+
+        Args:
+            encoding: Text encoding
+
+        Returns:
+            The file contents as a string
+
+        Raises:
+            FileNotFoundError: If the file doesn't exist
+            IsADirectoryError: If the path points to a directory
+        """
+        return self.read_bytes().decode(encoding)
+
+    def write_text(self, data: str, encoding: str = 'utf-8') -> int:
+        """
+        Write text to this file.
+
+        Args:
+            data: The text to write
+            encoding: Text encoding
+
+        Returns:
+            The number of characters written
+
+        Raises:
+            IsADirectoryError: If the path points to a directory
+        """
+        with self.open('wt', encoding=encoding) as f:
+            return f.write(data)
+
+    def read_bytes(self) -> bytes:
+        """
+        Read the contents of this file as bytes.
+
+        Returns:
+            The file contents as bytes
+
+        Raises:
+            FileNotFoundError: If the file doesn't exist
+            IsADirectoryError: If the path points to a directory
+        """
+        with self.open('rb') as f:
+            return f.read()
+
+    def write_bytes(self, data: bytes) -> int:
+        """
+        Write bytes to this file.
+
+        Args:
+            data: The bytes to write
+
+        Returns:
+            The number of bytes written
+
+        Raises:
+            IsADirectoryError: If the path points to a directory
+        """
+        with self.open('wb') as f:
+            return f.write(data)
+
+    def parent(self) -> ZipPath:
+        """
+        Return the parent directory of this path.
+
+        Returns:
+            A ZipPath object pointing to the parent directory
+        """
+        parent_path = str(PurePosixPath(self._path).parent)
+        return ZipPath(self.zip_file, parent_path, mode=self._mode)
+
+    def name(self) -> str:
+        """
+        Return the name of this path.
+
+        Returns:
+            The name of the path
+        """
+        return PurePosixPath(self._path).name
+
+    def suffix(self) -> str:
+        """
+        Return the file extension of this path.
+
+        Returns:
+            The file extension
+        """
+        return PurePosixPath(self._path).suffix
+
+    def stem(self) -> str:
+        """
+        Return the stem (filename without extension) of this path.
+
+        Returns:
+            The stem of the path
+        """
+        return PurePosixPath(self._path).stem
+
+    def rmdir(self):
+        raise NotImplementedError(f"{type(self).__name__} does not support removing directories")
+
+    def unlink(self, *args):
+        raise NotImplementedError(f"{type(self).__name__} does not support removing files")
+
+    def rename(self, *args):
+        raise NotImplementedError(f"{type(self).__name__} does not support renaming files or directories")
+
+    def replace(self, *args):
+        raise NotImplementedError(f"{type(self).__name__} does not support replacing files or directories")

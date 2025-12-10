@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+
+[project]
+name = "zippathlib"
+version = "0.1.0"
+description = "A Pathlib.PurePosixPath-like object for accessing the contents of ZIP archives"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [{name = "Paul McGuire", email = "ptmcg_pm+zippathlib@gmail.com"}]
+license = "MIT"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: System :: Archiving",
+    "Topic :: System :: Archiving :: Compression",
+    "Topic :: System :: Filesystems",
+    "Topic :: Utilities",
+    "Typing :: Typed",
+]
+
+[project.scripts]
+zippathlib = "zippathlib:__main__"
+
+[options.packages.find]
+where = ["src"]
