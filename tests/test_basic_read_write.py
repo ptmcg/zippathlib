@@ -2,8 +2,11 @@ import os
 from zippathlib import ZipPath
 import pytest
 
+from .util import _make_zip_archive
+
+
 def test_write_and_read(tmp_path):
-    zp = ZipPath(os.path.join(tmp_path, 'test.zip'))  # Path to your temporary zip file
+    zp = _make_zip_archive(tmp_path)  # Path to your temporary zip file
 
     contents = "New content for new file"
     with (zp / "newfile.txt").open('wt') as f:
@@ -17,7 +20,7 @@ def test_write_and_read(tmp_path):
     assert (zp / "newfile.txt").read_bytes() == contents.encode()
 
 def test_write_and_read2(tmp_path):
-    zp = ZipPath(os.path.join(tmp_path, 'test.zip'))
+    zp = _make_zip_archive(tmp_path)  # Path to your temporary zip file
 
     contents = "New content for new file"
     written = (zp / "newfile.txt").write_text(contents)
