@@ -1,6 +1,5 @@
-
 import argparse
-import sys
+from pathlib import Path
 
 from zippathlib import ZipPath
 
@@ -17,6 +16,28 @@ def make_parser() -> argparse.ArgumentParser:
 
     return parser
 
+def _extract_file(zippath:ZipPath, outputdir: Path | None = None):
+    """Extract a file from the zip archive."""
+    if outputdir is None:
+        outputdir = Path()
+
+    if not zippath.exists():
+        raise FileNotFoundError(f"File {str(zippath)!r} not found in zip archive.")
+
+    if  zippath.is_file():
+        data = zippath.read_bytes()
+        path, _, name = zippath._path.rpartition("/")
+        (outputdir / path).mkdir(parents=True, exist_ok=True)
+        outputpath = outputdir / path / name
+        outputpath.write_bytes(data)
+
+    elif zippath.is_dir():
+        for item in zippath.riterdir():
+            if item is not zippath:
+                _extract_file(item, outputdir)
+
+    else:
+        raise TypeError("Unsupported ZipPath type.")
 
 def main():
     args =  make_parser().parse_args()
@@ -40,12 +61,20 @@ def main():
             if args.tree:
                 # list all files  in a tree-like format
                 for item in zip_path.rglob("*"):
-                        print(f"{'  '*(item.depth-1)}|-- {item}")
+                        print(f"{'  '*(item._depth - 1)}|-- {item}")
+
+            elif args.extract:
+                if not args.outputdir:
+                    _extract_file(zip_path)
+                else:
+                    outputdir = Path(args.outputdir)
+                    _extract_file(zip_path, outputdir)
 
             else:
                 if zip_path.is_file():
                     print(f"File: {zip_path}")
-                    print(f"Content:{NL}{zip_path.read_text()[:100]}...")
+                    content = zip_path.read_text()
+                    print(f"Content:{NL}{content[:100]}{'...' if  len(content) > 100 else ''}")
 
                 elif zip_path.is_dir():
                     print(f"Directory: {zip_path}")
@@ -58,6 +87,7 @@ def main():
 
     except Exception as e:
         print(f"Error: {type(e).__name__}: {e}")
+        # raise
 
 
 if __name__ == '__main__':
