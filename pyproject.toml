@@ -30,7 +30,7 @@ classifiers = [
 ]
 
 [project.scripts]
-zippathlib = "zippathlib:__main__"
+zippathlib = "zippathlib:__main__.main"
 
 [options.packages.find]
 where = ["src"]
