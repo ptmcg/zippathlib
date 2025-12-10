@@ -10,7 +10,9 @@ from __future__ import annotations
 import fnmatch
 import io
 from pathlib import Path, PurePosixPath
-from typing import Union, Iterator, Optional, BinaryIO, TextIO, Any
+from typing import BinaryIO, TextIO, Any
+
+from collections.abc import Iterator
 import zipfile
 
 
@@ -21,7 +23,7 @@ class _ZipWriteFile:
     This class buffers written data and updates the ZIP file when closed.
     """
 
-    def __init__(self, zip_path: ZipPath, mode: str, encoding: Optional[str] = None):
+    def __init__(self, zip_path: ZipPath, mode: str, encoding: str | None = None):
         """
         Initialize a _ZipWriteFile object.
 
@@ -51,7 +53,7 @@ class _ZipWriteFile:
                 existing_text = zip_path.read_text(encoding=encoding or 'utf-8')
                 self.buffer.write(existing_text)
 
-    def write(self, data: Union[str, bytes]) -> int:
+    def write(self, data: str | bytes) -> int:
         """
         Write data to the buffer.
 
@@ -99,7 +101,7 @@ class _ZipWriteFile:
         self.closed = True
         self.buffer.close()
 
-    def __enter__(self) -> '_ZipWriteFile':
+    def __enter__(self) -> _ZipWriteFile:
         """Context manager enter method."""
         return self
 
@@ -132,7 +134,7 @@ class ZipPath(PurePosixPath):
             print("File exists!")
     """
 
-    def __init__(self, zip_file: Union[str, Path], path: str = '', mode="r") -> None:
+    def __init__(self, zip_file: str | Path, path: str = '', mode="r") -> None:
         """
         Initialize a ZipPath object.
 
@@ -433,7 +435,7 @@ class ZipPath(PurePosixPath):
     def __iter__(self):
         return (line for line in self.read_text().splitlines())
 
-    def open(self, mode: str = 'r', encoding: Optional[str] = None) -> Union[BinaryIO, TextIO]:
+    def open(self, mode: str = 'r', encoding: str | None = None) -> BinaryIO | TextIO:
         """
         Open the file pointed to by this path.
 
