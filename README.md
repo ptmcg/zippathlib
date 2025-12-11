@@ -69,6 +69,11 @@ The `zippathlib` module can be run from the command line with `zippathlib [optio
     # if outputdir is omitted, file is extracted to the current directory
     $ python -m zippathlib files/frmeshfull154.zip frmeshfull154/gen02.dat --extract --outputdir /tmp
 
+### Extract a file from a ZIP archive to stdout
+
+    # if outputdir is "-", file is extracted and printed to stdout
+    $ python -m zippathlib files/frmeshfull154.zip frmeshfull154/gen02.dat --extract --outputdir -
+
 
 ## Usage - `zippathlib.ZipPath` API
 

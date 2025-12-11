@@ -12,7 +12,7 @@ def make_parser() -> argparse.ArgumentParser:
     # options
     parser.add_argument("--tree" , action="store_true", help="List all files in a tree-like format.")
     parser.add_argument("--extract", "-x",  action="store_true", help="Extract files from zip file.")
-    parser.add_argument("--outputdir", "-o", help="Output directory for extraction.")
+    parser.add_argument("--outputdir", "-o", help="Output directory for extraction. Must be a directory or - for stdout. Must be used with --extract.")
 
     return parser
 
@@ -61,20 +61,30 @@ def main():
             if args.tree:
                 # list all files  in a tree-like format
                 for item in zip_path.rglob("*"):
-                        print(f"{'  '*(item._depth - 1)}|-- {item}")
+                    if not item.name():
+                        continue
+                    print(f"{'| '*(item._depth)}|-- {item.name()}")
 
             elif args.extract:
                 if not args.outputdir:
                     _extract_file(zip_path)
+                elif args.outputdir == "-":
+                    print(zip_path.read_text())
                 else:
                     outputdir = Path(args.outputdir)
                     _extract_file(zip_path, outputdir)
+
+            elif args.outputdir:
+                raise ValueError("--outputdir must be used with --extract.")
 
             else:
                 if zip_path.is_file():
                     print(f"File: {zip_path}")
                     content = zip_path.read_text()
-                    print(f"Content:{NL}{content[:100]}{'...' if  len(content) > 100 else ''}")
+                    print(
+                        f"Content:{NL}{content[:100]}"
+                        f"{'...' if  len(content) > 100 else ''}"
+                    )
 
                 elif zip_path.is_dir():
                     print(f"Directory: {zip_path}")
