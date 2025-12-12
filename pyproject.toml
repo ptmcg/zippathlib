@@ -9,6 +9,9 @@ readme = "README.md"
 requires-python = ">=3.12"
 authors = [{name = "Paul McGuire", email = "ptmcg_pm+zippathlib@gmail.com"}]
 license = "MIT"
+dependencies = [
+    "rich>=9.7.0",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",

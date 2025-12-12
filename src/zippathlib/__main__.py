@@ -1,20 +1,31 @@
 import argparse
 from pathlib import Path
 
+from rich import print as rprint
+from rich.tree import Tree as RichTree
+
 from zippathlib import ZipPath
 
 def make_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
+    parser.prog = 'zippathlib'
     parser.add_argument("zip_file", help="Zip file to explore")
     parser.add_argument("path_within_zip", nargs='?', default="",
             help="Path within the zip file (optional)")
 
     # options
-    parser.add_argument("--tree" , action="store_true", help="List all files in a tree-like format.")
-    parser.add_argument("--extract", "-x",  action="store_true", help="Extract files from zip file.")
-    parser.add_argument("--outputdir", "-o", help="Output directory for extraction. Must be a directory or - for stdout. Must be used with --extract.")
+    parser.add_argument("--tree" , action="store_true", help="list all files in a tree-like format")
+    parser.add_argument("--extract", "-x",  action="store_true", help="extract files from zip file")
+    parser.add_argument(
+        "--outputdir", "-o",
+        help=(
+            "output directory for extraction; must be a directory or '-' for stdout;"
+            " must be used with --extract; default is '.'"
+        )
+    )
 
     return parser
+
 
 def _extract_file(zippath:ZipPath, outputdir: Path | None = None):
     """Extract a file from the zip archive."""
@@ -39,6 +50,29 @@ def _extract_file(zippath:ZipPath, outputdir: Path | None = None):
     else:
         raise TypeError("Unsupported ZipPath type.")
 
+
+def _construct_tree(zippath:ZipPath) -> RichTree:
+    """Construct a rich Tree for the given zip path."""
+
+    ret = RichTree("")
+    parent_stack: list[tuple[RichTree, int]] = [(ret, zippath._depth - 1)]
+
+    for node in zippath.riterdir():
+        if not node.name():
+            continue
+
+        # unwind stack until depth < node's depth (which will be the new node's parent)
+        while node._depth <= parent_stack[-1][-1]:
+            parent_stack.pop()
+
+        parent = parent_stack[-1][0]
+        node_branch = parent.add(node.name())
+
+        parent_stack.append((node_branch, node._depth))
+
+    return ret
+
+
 def main():
     args =  make_parser().parse_args()
 
@@ -58,12 +92,11 @@ def main():
             if path_within_zip:
                 zip_path = zip_path / path_within_zip
 
+            if not zip_path.exists():
+                raise ValueError(f"{path_within_zip!r} does not exist in {zip_file}")
+
             if args.tree:
-                # list all files  in a tree-like format
-                for item in zip_path.rglob("*"):
-                    if not item.name():
-                        continue
-                    print(f"{'| '*(item._depth)}|-- {item.name()}")
+                rprint(_construct_tree(zip_path))
 
             elif args.extract:
                 if not args.outputdir:
