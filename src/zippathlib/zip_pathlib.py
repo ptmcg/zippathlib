@@ -9,8 +9,10 @@ from __future__ import annotations
 
 import fnmatch
 import io
-from pathlib import Path, PurePosixPath
-from typing import BinaryIO, TextIO, Any
+import os
+from pathlib import Path, PurePosixPath, PurePath
+import stat
+from typing import BinaryIO, TextIO, Any, NamedTuple
 
 from collections.abc import Iterator
 import zipfile
@@ -110,6 +112,19 @@ class _ZipWriteFile:
         self.close()
 
 
+class _ZipStat(NamedTuple):
+    st_mode: int = 0
+    st_ino: int = 0
+    st_dev: int = 0
+    st_nlink: int = 1
+    st_uid: int = 0
+    st_gid: int = 0
+    st_size: int = 0
+    st_atime: int = 0
+    st_mtime: int = 0
+    st_ctime: int = 0
+
+
 class ZipPath(PurePosixPath):
     """
     A pathlib.Path-like interface to files within a ZIP archive.
@@ -134,7 +149,7 @@ class ZipPath(PurePosixPath):
             print("File exists!")
     """
 
-    def __init__(self, zip_file: str | Path, path: str = '', mode="r") -> None:
+    def __init__(self, zip_file: str | PurePath, path: str = '', mode="r") -> None:
         """
         Initialize a ZipPath object.
 
@@ -146,6 +161,7 @@ class ZipPath(PurePosixPath):
         self.zip_file = Path(zip_file)
         self._path = path
         self._mode = mode
+        self._zipfile_stat = os.stat(self.zip_file)
 
     @classmethod
     def at_path(cls, source_path: Path, dest_path: Path = None) -> ZipPath:
@@ -336,9 +352,8 @@ class ZipPath(PurePosixPath):
                         return True
 
                 # Implicit directory (contains files)
-                for name in zf.namelist():
-                    if name.startswith(dir_path):
-                        return True
+                if any(name.startswith(dir_path) for name in zf.namelist()):
+                    return True
 
                 return False
         except zipfile.BadZipFile:
@@ -446,7 +461,7 @@ class ZipPath(PurePosixPath):
             An iterator of ZipPath objects matching the pattern
         """
         for path in self.riterdir():
-            if fnmatch.fnmatch(path.name(), pattern):
+            if fnmatch.fnmatch(path.name, pattern):
                 yield path
 
     def __iter__(self):
@@ -562,6 +577,7 @@ class ZipPath(PurePosixPath):
         with self.open('wb') as f:
             return f.write(data)
 
+    @property
     def parent(self) -> ZipPath:
         """
         Return the parent directory of this path.
@@ -569,9 +585,10 @@ class ZipPath(PurePosixPath):
         Returns:
             A ZipPath object pointing to the parent directory
         """
-        parent_path = str(PurePosixPath(self._path).parent)
+        parent_path = str(PurePath(self._path).parent)
         return ZipPath(self.zip_file, parent_path, mode=self._mode)
 
+    @property
     def name(self) -> str:
         """
         Return the name of this path.
@@ -579,8 +596,9 @@ class ZipPath(PurePosixPath):
         Returns:
             The name of the path
         """
-        return PurePosixPath(self._path).name
+        return PurePath(self._path).name
 
+    @property
     def suffix(self) -> str:
         """
         Return the file extension of this path.
@@ -588,8 +606,9 @@ class ZipPath(PurePosixPath):
         Returns:
             The file extension
         """
-        return PurePosixPath(self._path).suffix
+        return PurePath(self._path).suffix
 
+    @property
     def stem(self) -> str:
         """
         Return the stem (filename without extension) of this path.
@@ -597,7 +616,40 @@ class ZipPath(PurePosixPath):
         Returns:
             The stem of the path
         """
-        return PurePosixPath(self._path).stem
+        return PurePath(self._path).stem
+
+    def stat(self):
+        """
+        Return a simulated stat object for this file/directory.
+        """
+        if not self.exists():
+            raise FileNotFoundError(f"File not found in ZIP: {self}")
+
+        ret_st_mode = (
+            (stat.S_IFDIR if self.is_dir() else stat.S_IFREG)
+            | stat.S_IREAD
+            | (stat.S_IWRITE if "w" in self._mode else 0)
+        )
+        if self.is_file():
+            ret_st_size = len(self.read_bytes())
+        else:
+            ret_st_size = 0
+
+        ret_uid = self._zipfile_stat.st_uid
+        ret_gid = self._zipfile_stat.st_gid
+        ret_atime = ret_mtime = ret_ctime = int(self._zipfile_stat.st_mtime)
+
+        return os.stat_result(
+            _ZipStat(
+                st_mode=ret_st_mode,
+                st_size=ret_st_size,
+                st_uid=ret_uid,
+                st_gid=ret_gid,
+                st_atime=ret_atime,
+                st_mtime=ret_mtime,
+                st_ctime=ret_ctime,
+            )
+        )
 
     def rmdir(self):
         raise NotImplementedError(f"{type(self).__name__} does not support removing directories")
@@ -610,3 +662,6 @@ class ZipPath(PurePosixPath):
 
     def replace(self, *args):
         raise NotImplementedError(f"{type(self).__name__} does not support replacing files or directories")
+
+    def chmod(self, *args):
+        raise NotImplementedError(f"{type(self).__name__} does not support changing file permissions")

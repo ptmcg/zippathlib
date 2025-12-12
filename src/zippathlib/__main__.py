@@ -59,7 +59,7 @@ def _construct_tree(zippath:ZipPath) -> RichTree:
     parent_stack: list[tuple[RichTree, int]] = [(ret, zippath._depth - 1)]
 
     for node in zippath.riterdir():
-        if not node.name():
+        if not node.name:
             continue
 
         # unwind stack until depth < node's depth (which will be the new node's parent)
@@ -67,7 +67,7 @@ def _construct_tree(zippath:ZipPath) -> RichTree:
             parent_stack.pop()
 
         parent = parent_stack[-1][0]
-        node_branch = parent.add(node.name())
+        node_branch = parent.add(node.name)
 
         parent_stack.append((node_branch, node._depth))
 
@@ -128,7 +128,7 @@ def main():
                     print("Contents:")
                     for item in zip_path.iterdir():
                         type_indicator = "FD"[item.is_dir()]
-                        print(f"  [{type_indicator}] {item.name()}")
+                        print(f"  [{type_indicator}] {item.name}")
                 else:
                     print(f"Path does not exist: {zip_path}")
 
