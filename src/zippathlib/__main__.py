@@ -1,4 +1,5 @@
 import argparse
+import zipfile
 from pathlib import Path
 
 from rich import print as rprint
@@ -81,6 +82,9 @@ def main():
     NL = "\n"
 
     try:
+        # See if zip_file is actually a ZIP file
+        zipfile.ZipFile(zip_file)
+
         zip_path = ZipPath(zip_file)
 
         if "*" in path_within_zip:
