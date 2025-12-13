@@ -1,0 +1,19 @@
+==========
+Change Log
+==========
+
+v0.2.0
+------
+- Merged the `--outputdir` command line option into the `--extract` option
+
+- Fixed extract code to always preserve internal ZIP directory hierarchy; fixed
+  duplicate file write bug; raise error if trying to extract a directory to stdout
+
+- Deleted `name`, `stem`, and `suffix` properties, inherit from `PurePath` class.
+
+- Cleanup README and pyproject.toml omissions
+
+
+v0.1.0
+------
+- Initial release.

@@ -3,8 +3,8 @@ requires = ["setuptools", "wheel"]
 
 [project]
 name = "zippathlib"
-version = "0.1.0"
-description = "A Pathlib.PurePosixPath-like object for accessing the contents of ZIP archives"
+version = "0.2.0"
+description = "A `pathlib.Path`-like class for accessing the contents of ZIP archives"
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [{name = "Paul McGuire", email = "ptmcg_pm+zippathlib@gmail.com"}]
@@ -31,6 +31,9 @@ classifiers = [
     "Topic :: Utilities",
     "Typing :: Typed",
 ]
+
+[project.urls]
+Homepage = "https://github.com/ptmcg/zippathlib"
 
 [project.scripts]
 zippathlib = "zippathlib:__main__.main"
