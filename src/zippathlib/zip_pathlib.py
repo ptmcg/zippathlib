@@ -117,8 +117,8 @@ class _ZipStat(NamedTuple):
     st_ino: int = 0
     st_dev: int = 0
     st_nlink: int = 1
-    st_uid: int = 0
-    st_gid: int = 0
+    st_uid: int = 65534  # nobody
+    st_gid: int = 65534  # nogroup
     st_size: int = 0
     st_atime: int = 0
     st_mtime: int = 0
@@ -439,7 +439,8 @@ class ZipPath(PurePosixPath):
 
     def riterdir(self) -> Iterator[ZipPath]:
         """
-        Recursive iterator listing all files and directories in this directory and its subdirectories.
+        Recursive iterator listing all files and directories in this directory and
+        its subdirectories (depth first).
         """
         to_visit: list[ZipPath] = [self]
         while to_visit:
@@ -588,39 +589,9 @@ class ZipPath(PurePosixPath):
         parent_path = str(PurePath(self._path).parent)
         return ZipPath(self.zip_file, parent_path, mode=self._mode)
 
-    @property
-    def name(self) -> str:
+    def stat(self) ->os.stat_result:
         """
-        Return the name of this path.
-
-        Returns:
-            The name of the path
-        """
-        return PurePath(self._path).name
-
-    @property
-    def suffix(self) -> str:
-        """
-        Return the file extension of this path.
-
-        Returns:
-            The file extension
-        """
-        return PurePath(self._path).suffix
-
-    @property
-    def stem(self) -> str:
-        """
-        Return the stem (filename without extension) of this path.
-
-        Returns:
-            The stem of the path
-        """
-        return PurePath(self._path).stem
-
-    def stat(self):
-        """
-        Return a simulated stat object for this file/directory.
+        Return a simulated stat.stat_result object for this file/directory.
         """
         if not self.exists():
             raise FileNotFoundError(f"File not found in ZIP: {self}")
@@ -635,33 +606,34 @@ class ZipPath(PurePosixPath):
         else:
             ret_st_size = 0
 
-        ret_uid = self._zipfile_stat.st_uid
-        ret_gid = self._zipfile_stat.st_gid
         ret_atime = ret_mtime = ret_ctime = int(self._zipfile_stat.st_mtime)
 
         return os.stat_result(
             _ZipStat(
                 st_mode=ret_st_mode,
                 st_size=ret_st_size,
-                st_uid=ret_uid,
-                st_gid=ret_gid,
                 st_atime=ret_atime,
                 st_mtime=ret_mtime,
                 st_ctime=ret_ctime,
             )
         )
 
-    def rmdir(self):
+    def rmdir(self) -> None:
+        """Not supported."""
         raise NotImplementedError(f"{type(self).__name__} does not support removing directories")
 
-    def unlink(self, *args):
+    def unlink(self, *args) -> None:
+        """Not supported."""
         raise NotImplementedError(f"{type(self).__name__} does not support removing files")
 
-    def rename(self, *args):
+    def rename(self, *args) -> None:
+        """Not supported."""
         raise NotImplementedError(f"{type(self).__name__} does not support renaming files or directories")
 
-    def replace(self, *args):
+    def replace(self, *args) -> None:
+        """Not supported."""
         raise NotImplementedError(f"{type(self).__name__} does not support replacing files or directories")
 
-    def chmod(self, *args):
+    def chmod(self, *args) -> None:
+        """Not supported."""
         raise NotImplementedError(f"{type(self).__name__} does not support changing file permissions")

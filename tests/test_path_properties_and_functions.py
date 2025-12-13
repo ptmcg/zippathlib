@@ -20,6 +20,9 @@ from .util import _make_zip_archive
 )
 def test_basic_path_properties(test_path: str, properties:dict[str, bool], tmp_path):
     """Testing basic properties of a path"""
+    NOBODY = 65534
+    NOGROUP = 65534
+
     zp = _make_zip_archive(tmp_path)
 
     # Test basic properties of a path
@@ -37,6 +40,7 @@ def test_basic_path_properties(test_path: str, properties:dict[str, bool], tmp_p
     assert zp.name == zp_expected.name
     assert zp.stem == zp_expected.stem
     assert zp.suffix == zp_expected.suffix
+    assert zp.suffixes == zp_expected.suffixes
     assert list(zp.parts) == list(zp_expected.parts)
 
     for prop, expected in properties.items():
@@ -47,6 +51,8 @@ def test_basic_path_properties(test_path: str, properties:dict[str, bool], tmp_p
 
     if test_path and properties["exists"]:
         file_stat = zp.stat()
+        assert file_stat.st_uid == NOBODY
+        assert file_stat.st_gid == NOGROUP
         if properties["is_file"]:
             assert file_stat.st_size > 0
             assert stat.S_ISREG(file_stat.st_mode), f"{test_path} is not a regular file"
