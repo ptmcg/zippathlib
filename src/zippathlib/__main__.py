@@ -16,13 +16,11 @@ def make_parser() -> argparse.ArgumentParser:
 
     # options
     parser.add_argument("--tree" , action="store_true", help="list all files in a tree-like format")
-    parser.add_argument("--extract", "-x",  action="store_true", help="extract files from zip file")
     parser.add_argument(
-        "--outputdir", "-o",
-        help=(
-            "output directory for extraction; must be a directory or '-' for stdout;"
-            " must be used with --extract; default is '.'"
-        )
+        "--extract", "-x",
+        nargs="?", const=".", default=None,
+        dest="outputdir",
+        help="extract files from zip file to a directory or '-' for stdout, default is '.'"
     )
 
     return parser
@@ -30,26 +28,14 @@ def make_parser() -> argparse.ArgumentParser:
 
 def _extract_file(zippath:ZipPath, outputdir: Path | None = None):
     """Extract a file from the zip archive."""
-    if outputdir is None:
-        outputdir = Path()
-
     if not zippath.exists():
         raise FileNotFoundError(f"File {str(zippath)!r} not found in zip archive.")
 
-    if  zippath.is_file():
-        data = zippath.read_bytes()
-        path, _, name = zippath._path.rpartition("/")
-        (outputdir / path).mkdir(parents=True, exist_ok=True)
-        outputpath = outputdir / path / name
-        outputpath.write_bytes(data)
-
-    elif zippath.is_dir():
-        for item in zippath.riterdir():
-            if item is not zippath:
-                _extract_file(item, outputdir)
-
-    else:
-        raise TypeError("Unsupported ZipPath type.")
+    data = zippath.read_bytes()
+    path, _, name = zippath._path.rpartition("/")
+    (outputdir / path).mkdir(parents=True, exist_ok=True)
+    outputpath = outputdir / path / name
+    outputpath.write_bytes(data)
 
 
 def _construct_tree(zippath:ZipPath) -> RichTree:
@@ -100,21 +86,31 @@ def main():
                 raise ValueError(f"{path_within_zip!r} does not exist in {zip_file}")
 
             if args.tree:
+                # print pretty tree of ZIP contents
                 rprint(_construct_tree(zip_path))
 
-            elif args.extract:
-                if not args.outputdir:
-                    _extract_file(zip_path)
-                elif args.outputdir == "-":
-                    print(zip_path.read_text())
-                else:
-                    outputdir = Path(args.outputdir)
-                    _extract_file(zip_path, outputdir)
-
             elif args.outputdir:
-                raise ValueError("--outputdir must be used with --extract.")
+                # extracting one or more files/directories
+                if args.outputdir == "-":
+                    if zip_path.is_file():
+                        # dump to stdout
+                        print(zip_path.read_text())
+                    else:
+                        raise ValueError("Cannot dump directory to stdout")
+                else:
+                    # extract files to given directory
+                    zip_file_path = Path(zip_file)
+                    outputdir = Path(args.outputdir) / zip_file_path.stem
+                    for file in zip_path.riterdir():
+                        if file.is_file():
+                            print(f"extracting {file}")
+                            _extract_file(file, outputdir)
+                        else:
+                            # make directory, in case it is an empty dir
+                            (outputdir / file._path).mkdir(parents=True, exist_ok=True)
 
             else:
+                # just browsing
                 if zip_path.is_file():
                     print(f"File: {zip_path}")
                     content = zip_path.read_text()
