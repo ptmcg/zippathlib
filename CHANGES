@@ -2,6 +2,11 @@
 Change Log
 ==========
 
+v0.4.0
+------
+- Not yet started
+
+
 v0.3.0
 ------
 - Added features to support a guard limit to prevent accidental extraction of
@@ -14,6 +19,8 @@ v0.3.0
   - earlier versions extracted a file to then find the `len()` of the fetched data;
     changed to extract the file size based on the `ZipInfo.size()` method.
 
+- Added -V CLI option and `__version__` package attribute to get the current
+  package version.
 
 v0.2.0
 ------
