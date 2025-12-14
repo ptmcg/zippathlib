@@ -7,7 +7,7 @@
       <excludeFolder url="file://$MODULE_DIR$/.venv314" />
       <excludeFolder url="file://$MODULE_DIR$/.venv" />
     </content>
-    <orderEntry type="jdk" jdkName="Python 3.14 (zip-pathlib)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.14 (zippathlib)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>
