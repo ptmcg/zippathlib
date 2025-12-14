@@ -9,6 +9,10 @@ from zippathlib import ZipPath
 
 DEFAULT_SIZE_LIMIT = 2 * 1024**3
 
+def get_version() -> str:
+    from . import __version__
+    return __version__
+
 def make_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.prog = 'zippathlib'
@@ -17,9 +21,14 @@ def make_parser() -> argparse.ArgumentParser:
             help="Path within the zip file (optional)")
 
     # options
+    parser.add_argument(
+        "-V", "--version",
+        action="version",
+        version=f"%(prog)s {get_version()}"
+    )
     parser.add_argument("--tree" , action="store_true", help="list all files in a tree-like format")
     parser.add_argument(
-        "--extract", "-x",
+        "-x", "--extract",
         nargs="?", const=".", default=None,
         dest="outputdir",
         help="extract files from zip file to a directory or '-' for stdout, default is '.'"
