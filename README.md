@@ -44,7 +44,8 @@ extract individual files or directories, and view the contents of the ZIP archiv
 The `zippathlib` module can be run from the command line with `zippathlib [options] ZIP_FILE [PATH]`.
 
     $ zippathlib -h
-    usage: zippathlib [-h] [--tree] [--extract [OUTPUTDIR]] zip_file [path_within_zip]
+    usage: zippathlib [-h] [--tree] [--extract [OUTPUTDIR]] [--limit LIMIT]
+                      zip_file [path_within_zip]
     
     positional arguments:
       zip_file              Zip file to explore
@@ -54,8 +55,12 @@ The `zippathlib` module can be run from the command line with `zippathlib [optio
       -h, --help            show this help message and exit
       --tree                list all files in a tree-like format
       --extract, -x [OUTPUTDIR]
-                            extract files from zip file to a directory or '-' for stdout, default
-                            is '.'
+                            extract files from zip file to a directory or '-' for
+                            stdout, default is '.'
+      --limit LIMIT         guard value against malicious ZIP files that uncompress
+                            to excessive sizes; specify as an integer or float value
+                            optionally followed by a multiplier suffix K,M,G,T,P,E,
+                            or Z; default is 2.00G
 
 ### List the root directory of a ZIP archive
 

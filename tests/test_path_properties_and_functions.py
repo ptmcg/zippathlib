@@ -65,3 +65,43 @@ def test_basic_path_properties(test_path: str, properties:dict[str, bool], tmp_p
     if not properties["exists"]:
         with pytest.raises(FileNotFoundError):
             zp.stat()
+
+
+def test_file_size_overwrite(tmp_path):
+    zp = _make_zip_archive(tmp_path)
+
+    scratch = zp / "scratch.txt"
+    scratch.write_text("A" * 100)
+    assert scratch.size() == 100
+    scratch.write_text("A" * 50)
+    assert scratch.size() == 50
+
+
+def test_file_sizes(tmp_path):
+    import itertools
+
+    zp = _make_zip_archive(tmp_path)
+
+    this_zp = zp / "scratch"
+    file_count = itertools.count(1)
+
+    def make_file(path: str, size: int) -> ZipPath:
+        new_zp = this_zp / path / f"file_{next(file_count)}.txt"
+        new_zp.write_text("A" * size)
+        return new_zp
+
+    # build subdirs with known file sizes
+    make_file("sub1", 100)
+    make_file("sub1", 200)
+    make_file("sub1/sub2", 100)
+    make_file("sub1/sub2/sub3", 100)
+
+    assert this_zp.total_size() == 500
+    assert (this_zp / "sub1/file_1.txt").size() == 100
+    assert (this_zp / "sub1/file_1.txt").total_size() == 100
+    assert (this_zp / "sub1/sub2").size() == 0
+    assert (this_zp / "sub1/sub2").total_size() == 200
+
+    make_file("sub1/sub2/sub3", 100)
+    assert this_zp.total_size() == 600
+    assert (this_zp / "sub1/sub2").total_size() == 300

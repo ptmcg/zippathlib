@@ -7,7 +7,9 @@ ZIP archives using a familiar pathlib-like interface.
 """
 from __future__ import annotations
 
+import contextlib
 import fnmatch
+import functools
 import io
 import os
 from pathlib import Path, PurePosixPath, PurePath
@@ -545,6 +547,7 @@ class ZipPath(PurePosixPath):
         Raises:
             IsADirectoryError: If the path points to a directory
         """
+        self._clear_cached_info()
         with self.open('wt', encoding=encoding) as f:
             return f.write(data)
 
@@ -575,6 +578,7 @@ class ZipPath(PurePosixPath):
         Raises:
             IsADirectoryError: If the path points to a directory
         """
+        self._clear_cached_info()
         with self.open('wb') as f:
             return f.write(data)
 
@@ -589,7 +593,23 @@ class ZipPath(PurePosixPath):
         parent_path = str(PurePath(self._path).parent)
         return ZipPath(self.zip_file, parent_path, mode=self._mode)
 
-    def stat(self) ->os.stat_result:
+    @functools.cached_property
+    def _info(self) -> zipfile.ZipInfo | None:
+        from contextlib import closing
+
+        if not self.is_file() or not self.exists():
+            return None
+
+        with closing(zipfile.ZipFile(self.zip_file)) as zf:
+            info: zipfile.ZipInfo = zf.getinfo(self._path)
+
+        return info
+
+    def _clear_cached_info(self):
+        with contextlib.suppress(AttributeError):
+            del self._info
+
+    def stat(self) -> os.stat_result:
         """
         Return a simulated stat.stat_result object for this file/directory.
         """
@@ -601,8 +621,9 @@ class ZipPath(PurePosixPath):
             | stat.S_IREAD
             | (stat.S_IWRITE if "w" in self._mode else 0)
         )
+
         if self.is_file():
-            ret_st_size = len(self.read_bytes())
+            ret_st_size = self._info.file_size
         else:
             ret_st_size = 0
 
@@ -617,6 +638,12 @@ class ZipPath(PurePosixPath):
                 st_ctime=ret_ctime,
             )
         )
+
+    def size(self) -> int:
+        return self.stat().st_size
+
+    def total_size(self) -> int:
+        return sum(p.size() for p in self.riterdir())
 
     def rmdir(self) -> None:
         """Not supported."""

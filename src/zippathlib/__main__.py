@@ -7,6 +7,8 @@ from rich.tree import Tree as RichTree
 
 from zippathlib import ZipPath
 
+DEFAULT_SIZE_LIMIT = 2 * 1024**3
+
 def make_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.prog = 'zippathlib'
@@ -22,9 +24,41 @@ def make_parser() -> argparse.ArgumentParser:
         dest="outputdir",
         help="extract files from zip file to a directory or '-' for stdout, default is '.'"
     )
+    parser.add_argument(
+        "--limit", default=2*1024**3,
+        type = _h2i,
+        help="guard value against malicious ZIP files that uncompress"
+             " to excessive sizes; specify as an integer or float value"
+             " optionally followed by a multiplier suffix K,M,G,T,P,E, or Z;"
+             f" default is {_i2h(DEFAULT_SIZE_LIMIT).rstrip('B')}"
+    )
 
     return parser
 
+def _i2h(n: int) -> str:
+    if n < 1024:
+        return f"{n:,} bytes"
+    for prefix in "KMGTPEZ":
+        n /= 1024
+        if n < 1024:
+            break
+    return f"{n:.2f}{prefix}B"
+
+def _h2i(s: str) -> int:
+    if not s:
+        return 0
+
+    s = s.rstrip("B").replace(",", "").removesuffix(" bytes")
+
+    if s.isdigit():
+        return int(s)
+
+    n = 1
+    for prefix in "KMGTPEZ":
+        n *= 1024
+        if prefix == s[-1]:
+            break
+    return int(n * float(s[:-1]))
 
 def _extract_file(zippath:ZipPath, outputdir: Path | None = None):
     """Extract a file from the zip archive."""
@@ -101,6 +135,10 @@ def main():
                     # extract files to given directory
                     zip_file_path = Path(zip_file)
                     outputdir = Path(args.outputdir) / zip_file_path.stem
+                    total_size = zip_path.total_size()
+                    if total_size > args.limit:
+                        raise ValueError(f"Total file size {_i2h(total_size)} exceeds extract limit {_i2h(args.limit)}")
+
                     for file in zip_path.riterdir():
                         if file.is_file():
                             print(f"extracting {file}")
@@ -112,7 +150,7 @@ def main():
             else:
                 # just browsing
                 if zip_path.is_file():
-                    print(f"File: {zip_path}")
+                    print(f"File: {zip_path} ({_i2h(zip_path.size())})")
                     content = zip_path.read_text()
                     print(
                         f"Content:{NL}{content[:100]}"
@@ -120,11 +158,11 @@ def main():
                     )
 
                 elif zip_path.is_dir():
-                    print(f"Directory: {zip_path}")
+                    print(f"Directory: {zip_path} (total size {_i2h(zip_path.total_size())})")
                     print("Contents:")
                     for item in zip_path.iterdir():
                         type_indicator = "FD"[item.is_dir()]
-                        print(f"  [{type_indicator}] {item.name}")
+                        print(f"  [{type_indicator}] {item.name} {_i2h(item.size()) if item.is_file() else _i2h(item.total_size())}")
                 else:
                     print(f"Path does not exist: {zip_path}")
 

@@ -2,6 +2,19 @@
 Change Log
 ==========
 
+v0.3.0
+------
+- Added features to support a guard limit to prevent accidental extraction of
+  ZIP bombs:
+  - in the CLI, a --limit option defaults to 2G, but permits manual override to
+    larger or smaller values
+  - in the API, `ZipPath`'s now have a `size()` method to show the size of a file
+    entry, and a `total_size()` method to show the aggregate size of all files
+    contained within a directory and any subdirectories
+  - earlier versions extracted a file to then find the `len()` of the fetched data;
+    changed to extract the file size based on the `ZipInfo.size()` method.
+
+
 v0.2.0
 ------
 - Merged the `--outputdir` command line option into the `--extract` option
