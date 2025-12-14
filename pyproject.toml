@@ -3,7 +3,7 @@ requires = ["setuptools", "wheel"]
 
 [project]
 name = "zippathlib"
-version = "0.2.0"
+version = "0.3.0"
 description = "A `pathlib.Path`-like class for accessing the contents of ZIP archives"
 readme = "README.md"
 requires-python = ">=3.12"
