@@ -12,12 +12,23 @@ import fnmatch
 import functools
 import io
 import os
+import warnings
 from pathlib import Path, PurePosixPath, PurePath
 import stat
 from typing import BinaryIO, TextIO, Any, NamedTuple
 
 from collections.abc import Iterator
 import zipfile
+
+
+class ZipPathDuplicateFileWarning(UserWarning):
+    """
+    Writing to an existing file entry in a ZIP archive does not overwrite
+    the previous contents, but creates a duplicate entry for that file.
+    """
+    def __init__(self, file_path: str):
+        message = f"File overwrite creates duplicate ZIP entry: {file_path!r}"
+        super().__init__(message)
 
 
 class _ZipWriteFile:
@@ -548,8 +559,15 @@ class ZipPath(PurePosixPath):
             IsADirectoryError: If the path points to a directory
         """
         self._clear_cached_info()
-        with self.open('wt', encoding=encoding) as f:
-            return f.write(data)
+        if self.exists():
+            warnings.warn(
+                ZipPathDuplicateFileWarning(self._path),
+                stacklevel=2,
+            )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            with self.open('wt', encoding=encoding) as f:
+                return f.write(data)
 
     def read_bytes(self) -> bytes:
         """
@@ -579,8 +597,15 @@ class ZipPath(PurePosixPath):
             IsADirectoryError: If the path points to a directory
         """
         self._clear_cached_info()
-        with self.open('wb') as f:
-            return f.write(data)
+        if self.exists():
+            warnings.warn(
+                ZipPathDuplicateFileWarning(self._path),
+                stacklevel=2,
+            )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            with self.open('wb') as f:
+                return f.write(data)
 
     @property
     def parent(self) -> ZipPath:
@@ -595,12 +620,10 @@ class ZipPath(PurePosixPath):
 
     @functools.cached_property
     def _info(self) -> zipfile.ZipInfo | None:
-        from contextlib import closing
-
         if not self.is_file() or not self.exists():
             return None
 
-        with closing(zipfile.ZipFile(self.zip_file)) as zf:
+        with self._get_zipfile() as zf:
             info: zipfile.ZipInfo = zf.getinfo(self._path)
 
         return info
@@ -664,3 +687,10 @@ class ZipPath(PurePosixPath):
     def chmod(self, *args) -> None:
         """Not supported."""
         raise NotImplementedError(f"{type(self).__name__} does not support changing file permissions")
+
+    def scan_for_duplicates(self) -> list[tuple[str, int]]:
+        from collections import Counter
+        with self._get_zipfile() as zf:
+            file_tally = Counter(zf.namelist())
+            dupes = [(name, count) for name, count in file_tally.items() if count > 1]
+            return dupes

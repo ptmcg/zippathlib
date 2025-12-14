@@ -4,7 +4,14 @@ Change Log
 
 v0.4.0
 ------
-- Not yet started
+- Added features to warn when writing to an existing file in a ZIP archive.
+  Writing to an existing file does not replace the contents of that file, but
+  instead creates a duplicate entry. Calling `ZipPath.write_text()` or `write_bytes()`
+  to an existing file will now raise a `ZipPathDuplicateFileWarning`.
+
+- Added methods to `ZipPath` API to detect duplicate entries:
+  - `scan_for_duplicates()` returns a list of `(str, int) tuples, of all
+    duplicated entries and their instance counts
 
 
 v0.3.0
@@ -17,10 +24,12 @@ v0.3.0
     entry, and a `total_size()` method to show the aggregate size of all files
     contained within a directory and any subdirectories
   - earlier versions extracted a file to then find the `len()` of the fetched data;
-    changed to extract the file size based on the `ZipInfo.size()` method.
+    changed to determine a file entry's uncompressed size based on the
+    `ZipInfo.size()` method.
 
 - Added -V CLI option and `__version__` package attribute to get the current
   package version.
+
 
 v0.2.0
 ------

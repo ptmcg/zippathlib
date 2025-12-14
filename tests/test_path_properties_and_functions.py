@@ -1,9 +1,10 @@
+import tempfile
 from pathlib import PurePath
 import stat
 
 import pytest
 
-from zippathlib import ZipPath
+from zippathlib import ZipPath, ZipPathDuplicateFileWarning
 from .util import _make_zip_archive
 
 
@@ -70,11 +71,17 @@ def test_basic_path_properties(test_path: str, properties:dict[str, bool], tmp_p
 def test_file_size_overwrite(tmp_path):
     zp = _make_zip_archive(tmp_path)
 
-    scratch = zp / "scratch.txt"
+    scratch = zp / "scratch" / "scratch.txt"
     scratch.write_text("A" * 100)
     assert scratch.size() == 100
-    scratch.write_text("A" * 50)
+    with pytest.warns(ZipPathDuplicateFileWarning):
+        scratch.write_text("A" * 50)
     assert scratch.size() == 50
+    with pytest.warns(ZipPathDuplicateFileWarning):
+        scratch.write_text("A" * 10)
+    assert scratch.size() == 10
+
+    assert zp.scan_for_duplicates() == [("scratch/scratch.txt", 3)], "expected duplicates not found"
 
 
 def test_file_sizes(tmp_path):
