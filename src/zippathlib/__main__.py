@@ -171,7 +171,7 @@ def main():
                     print("Contents:")
                     for item in zip_path.iterdir():
                         type_indicator = "FD"[item.is_dir()]
-                        print(f"  [{type_indicator}] {item.name} {_i2h(item.size()) if item.is_file() else _i2h(item.total_size())}")
+                        print(f"  [{type_indicator}] {item.name} ({_i2h(item.size()) if item.is_file() else _i2h(item.total_size())})")
                 else:
                     print(f"Path does not exist: {zip_path}")
 

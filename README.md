@@ -41,7 +41,7 @@ extract individual files or directories, and view the contents of the ZIP archiv
 
 
 ## Usage - Command line
-The `zippathlib` module can be run from the command line with `zippathlib [options] ZIP_FILE [PATH]`.
+After installing it, the `zippathlib` module can be run from the command line with `python -m zippathlib` or just `zippathlib`.
 
     $ zippathlib -h
     usage: zippathlib [-h] [--tree] [--extract [OUTPUTDIR]] [--limit LIMIT]
@@ -53,6 +53,7 @@ The `zippathlib` module can be run from the command line with `zippathlib [optio
     
     options:
       -h, --help            show this help message and exit
+      -V, --version         show program's version number and exit
       --tree                list all files in a tree-like format
       --extract, -x [OUTPUTDIR]
                             extract files from zip file to a directory or '-' for
@@ -64,44 +65,45 @@ The `zippathlib` module can be run from the command line with `zippathlib [optio
 
 ### List the root directory of a ZIP archive
 
-    $ zippathlib .\dist\zippathlib-0.1.0-py3-none-any.whl
-    Directory: dist\zippathlib-0.1.0-py3-none-any.whl::
+    $ zippathlib .\dist\zippathlib-0.4.0-py3-none-any.whl
+    Directory: dist\zippathlib-0.4.0-py3-none-any.whl:: (total size 39.76KB)
     Contents:
-      [D] zippathlib
-      [D] zippathlib-0.1.0.dist-info
+      [D] zippathlib (28.32KB)
+      [D] zippathlib-0.4.0.dist-info (11.44KB)
 
 ### List the files in a directory
 
-    $ zippathlib .\dist\zippathlib-0.1.0-py3-none-any.whl zippathlib-0.1.0.dist-info
-    Directory: dist\zippathlib-0.1.0-py3-none-any.whl::zippathlib-0.1.0.dist-info
+    $ zippathlib .\dist\zippathlib-0.4.0-py3-none-any.whl zippathlib-0.4.0.dist-info
+    Directory: dist\zippathlib-0.4.0-py3-none-any.whl::zippathlib-0.4.0.dist-info (total size 11.44KB)
     Contents:
-      [D] licenses
-      [F] METADATA
-      [F] WHEEL
-      [F] entry_points.txt
-      [F] top_level.txt
-      [F] RECORD
+      [D] licenses (1.06KB)
+      [F] METADATA (9.49KB)
+      [F] WHEEL (91 bytes)
+      [F] entry_points.txt (56 bytes)
+      [F] top_level.txt (11 bytes)
+      [F] RECORD (748 bytes
 
 ### List the first few lines of a file
 
-    $ zippathlib .\dist\zippathlib-0.1.0-py3-none-any.whl zippathlib-0.1.0.dist-info/licenses/LICENSE
-    File: dist\zippathlib-0.1.0-py3-none-any.whl::zippathlib-0.1.0.dist-info/licenses/LICENSE
+    $ zippathlib .\dist\zippathlib-0.4.0-py3-none-any.whl zippathlib-0.4.0.dist-info/licenses/LICENSE
+    File: dist\zippathlib-0.4.0-py3-none-any.whl::zippathlib-0.4.0.dist-info/licenses/LICENSE (1.06KB)
     Content:
     MIT License
     
     Copyright (c) 2025 Paul McGuire
-    
-    Permission is hereby granted, free of charge, to a...
+
+Permission is hereby granted, free of charge, to a...
 
 ### Extract a file from a ZIP archive to the local filesystem
 
     # if outputdir is omitted, file is extracted to the current directory
-    $ zippathlib .\dist\zippathlib-0.1.0-py3-none-any.whl zippathlib-0.1.0.dist-info/licenses/LICENSE --extract /tmp
+    $ zippathlib .\dist\zippathlib-0.4.0-py3-none-any.whl zippathlib-0.4.0.dist-info/licenses/LICENSE --extract tmp
+    extracting dist\zippathlib-0.4.0-py3-none-any.whl::zippathlib-0.4.0.dist-info/licenses/LICENSE
 
 ### Extract a file from a ZIP archive to stdout
 
     # if outputdir is "-", file is extracted and printed to stdout
-    $ zippathlib .\dist\zippathlib-0.1.0-py3-none-any.whl zippathlib-0.1.0.dist-info/licenses/LICENSE --extract -
+    $ zippathlib .\dist\zippathlib-0.4.0-py3-none-any.whl zippathlib-0.4.0.dist-info/licenses/LICENSE --extract -
     MIT License
     
     Copyright (c) 2025 Paul McGuire
@@ -112,9 +114,9 @@ The `zippathlib` module can be run from the command line with `zippathlib [optio
 
 ### View the contents of a ZIP archive (or a subdirectory within the ZIP archive) as a tree
 
-    $ python -m zippathlib ./dist/zippathlib-0.1.0-py3-none-any.whl --tree
+    $ zippathlib .\dist\zippathlib-0.4.0-py3-none-any.whl --tree                                                 
 
-    ├── zippathlib-0.1.0.dist-info
+    ├── zippathlib-0.4.0.dist-info
     │   ├── RECORD
     │   ├── top_level.txt
     │   ├── entry_points.txt
@@ -125,7 +127,7 @@ The `zippathlib` module can be run from the command line with `zippathlib [optio
     └── zippathlib
         ├── zip_pathlib.py
         ├── __main__.py
-        └── __init__.py 
+        └── __init__.py
 
 (Thanks to Will McGugan's `rich` library for making the tree output so easy.)
 
@@ -186,7 +188,7 @@ if ZipPath('archive.zip', 'path/to/file.txt').exists():
 ```
 
 ## Installation
-You can install `ZipPath` using pip:
+You can install `ZipPath` using `pip` or `pipx`:
 
 ```bash
 pip install zippathlib
