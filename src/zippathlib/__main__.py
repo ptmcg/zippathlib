@@ -45,9 +45,9 @@ def make_parser() -> argparse.ArgumentParser:
     return parser
 
 def _i2h(n: int) -> str:
-    if n < 1024:
+    if n < 1024 * 1024:
         return f"{n:,} bytes"
-    for prefix in "KMGTPEZ":
+    for prefix in "MGTPEZ":
         n /= 1024
         if n < 1024:
             break
