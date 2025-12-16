@@ -694,3 +694,55 @@ class ZipPath(PurePosixPath):
             file_tally = Counter(zf.namelist())
             dupes = [(name, count) for name, count in file_tally.items() if count > 1]
             return dupes
+
+    def get_deduplicated_entries(self) -> list[zipfile.ZipInfo]:
+        with self._get_zipfile() as zf:
+            deduped = {
+                info.filename: info for info in zf.infolist()
+            }
+            return list(deduped.values())
+
+    def purge_duplicates(
+            self,
+            *,
+            workdir: Path | str = None,
+            replace: bool = False,
+            keep: bool = False,
+    ) -> zipfile.ZipFile:
+        """
+        Remove duplicate versions of any files.
+        """
+        import tempfile
+        import shutil
+
+        if workdir is None:
+            workdir = Path(tempfile.gettempdir())
+        if isinstance(workdir, str):
+            workdir = Path(workdir)
+
+        dest = workdir / self.zip_file.name
+
+        if deduped := self.get_deduplicated_entries():
+            with zipfile.ZipFile(
+                dest,
+                mode="w",
+                compression=zipfile.ZIP_DEFLATED,
+                compresslevel=9,
+            ) as new_zf:
+                for entry_info in deduped:
+                    if entry_info.is_dir():
+                        continue
+                    entry = self / entry_info.filename
+                    print(f"adding {entry._path}")
+                    new_zf.writestr(entry._path, entry.read_bytes())
+
+            if replace:
+                if keep:
+                    shutil.copy2(dest, self.zip_file)
+                else:
+                    shutil.move(dest, self.zip_file)
+            else:
+                if not keep:
+                    dest.unlink()
+
+        return new_zf

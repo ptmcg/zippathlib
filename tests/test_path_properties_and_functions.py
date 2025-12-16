@@ -81,7 +81,43 @@ def test_file_size_overwrite(tmp_path):
         scratch.write_text("A" * 10)
     assert scratch.size() == 10
 
-    assert zp.scan_for_duplicates() == [("scratch/scratch.txt", 3)], "expected duplicates not found"
+    assert zp.scan_for_duplicates() == [
+        ("scratch/scratch.txt", 3)
+    ], "expected duplicates not found"
+
+    assert list(f._path for f in zp.riterdir()) == [
+        '',
+        'scratch',
+        'scratch/scratch.txt',
+        'scratch/scratch.txt',
+        'scratch/scratch.txt',
+        'source',
+        'source/subfolder',
+        'source/subfolder/File4.txt',
+        'source/File3.txt',
+        'source/File2.txt',
+        'source/File1.txt'
+    ]
+
+    workdir = tmp_path / "workdir"
+    workdir.mkdir()
+
+    zp.purge_duplicates(workdir=workdir, replace=True, keep=True)
+    assert zp.scan_for_duplicates() == []
+    assert list(f._path for f in zp.riterdir()) == [
+        '',
+        'scratch',
+        'scratch/scratch.txt',
+        'source',
+        'source/subfolder',
+        'source/subfolder/File4.txt',
+        'source/File3.txt',
+        'source/File2.txt',
+        'source/File1.txt'
+    ]
+
+    scratch = zp / "scratch" / "scratch.txt"
+    assert scratch.size() == 10
 
 
 def test_file_sizes(tmp_path):

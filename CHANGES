@@ -4,14 +4,18 @@ Change Log
 
 v0.4.0
 ------
-- Added features to warn when writing to an existing file in a ZIP archive.
+- Added warning when writing to an existing file in a ZIP archive.
   Writing to an existing file does not replace the contents of that file, but
   instead creates a duplicate entry. Calling `ZipPath.write_text()` or `write_bytes()`
   to an existing file will now raise a `ZipPathDuplicateFileWarning`.
 
-- Added methods to `ZipPath` API to detect duplicate entries:
+- Added methods to `ZipPath` API to detect and purge duplicate entries:
   - `scan_for_duplicates()` returns a list of `(str, int) tuples, of all
     duplicated entries and their instance counts
+
+  - `purge_duplicates()` removes duplicates by creating a copy of the current
+    ZIP archive, copying only the latest version of each file, and then replacing
+    the current ZIP archive with the purged copy
 
 
 v0.3.0
