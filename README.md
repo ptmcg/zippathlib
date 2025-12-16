@@ -12,6 +12,7 @@ extract individual files or directories, and view the contents of the ZIP archiv
 <!-- TOC -->
 * [zippathlib - Provides a pathlib.Path-like class for accessing files in ZIP archives](#zippathlib---provides-a-pathlibpath-like-class-for-accessing-files-in-zip-archives)
   * [Features](#features)
+  * [Doesn't Python's `zipfile` module already have a `Path` class?](#doesnt-pythons-zipfile-module-already-have-a-path-class)
   * [Usage - Command line](#usage---command-line)
     * [List the root directory of a ZIP archive](#list-the-root-directory-of-a-zip-archive)
     * [List the files in a directory](#list-the-files-in-a-directory)
@@ -38,6 +39,12 @@ extract individual files or directories, and view the contents of the ZIP archiv
 - Allows navigating the directory structure within a ZIP archive using familiar `pathlib` methods like `iterdir()`, `joinpath()`, etc.
  `riterdir()` provides a recursive listing of the directories and files in the archive.
 - Command-line interface for browsing a ZIP archive's contents, or for extracting files to the local filesystem.
+
+
+## Doesn't Python's `zipfile` module already have a `Path` class?
+
+The Python standard library module `zipfile` does provide a `Path` [class](https://docs.python.org/3/library/zipfile.html#zipfile.Path), 
+but it is primarily for read support in existing ZIP files. It doesn't provide a complete `pathlib`-like API for working with files and directories.
 
 
 ## Usage - Command line
