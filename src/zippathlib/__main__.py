@@ -106,15 +106,17 @@ def _construct_tree(zippath:ZipPath) -> RichTree:
 def main():
     args =  make_parser().parse_args()
 
-    zip_file = args.zip_file
+    # unpack positional args into locals
+    zip_filename = args.zip_file
     path_within_zip = args.path_within_zip
     NL = "\n"
 
     try:
-        # See if zip_file is actually a ZIP file
-        zipfile.ZipFile(zip_file)
+        # See if zip_filename is actually a ZIP file - if not, this
+        # will raise an exception and we're done
+        zipfile.ZipFile(zip_filename)
 
-        zip_path = ZipPath(zip_file)
+        zip_path = ZipPath(zip_filename)
 
         if "*" in path_within_zip:
             # Handle * wildcard for path_within_zip
@@ -126,7 +128,7 @@ def main():
                 zip_path = zip_path / path_within_zip
 
             if not zip_path.exists():
-                raise ValueError(f"{path_within_zip!r} does not exist in {zip_file}")
+                raise ValueError(f"{path_within_zip!r} does not exist in {zip_filename}")
 
             if args.tree:
                 # print pretty tree of ZIP contents
@@ -142,7 +144,7 @@ def main():
                         raise ValueError("Cannot dump directory to stdout")
                 else:
                     # extract files to given directory
-                    zip_file_path = Path(zip_file)
+                    zip_file_path = Path(zip_filename)
                     outputdir = Path(args.outputdir) / zip_file_path.stem
                     total_size = zip_path.total_size()
                     if total_size > args.limit:

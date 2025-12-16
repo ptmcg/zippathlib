@@ -5,7 +5,7 @@ from .util import _make_zip_archive
 
 
 def _run_cli_command(cmd: str):
-    # cmd = f"zippathlib {zp.zip_file} source/File1.txt --extract -".split()
+    # cmd = f"zippathlib {zp.zip_filename} source/File1.txt --extract -".split()
 
     import sys
     import zippathlib.__main__ as zip_pathlib_main
@@ -15,7 +15,7 @@ def _run_cli_command(cmd: str):
 
 
 def test_file_extraction(tmp_path):
-    from pathlib import Path
+    import pathlib
 
     zp = _make_zip_archive(tmp_path)
     assert zp.exists()
@@ -24,9 +24,9 @@ def test_file_extraction(tmp_path):
     output_path = (tmp_path / "output")
     output_path.mkdir()
 
-    _run_cli_command(f"zippathlib {zp.zip_file} source/File1.txt --extract {output_path}")
+    _run_cli_command(f"zippathlib {zp.zip_filename} source/File1.txt --extract {output_path}")
 
-    extracted_path = output_path / Path(zp.zip_file).stem / "source" / "File1.txt"
+    extracted_path = output_path / pathlib.Path(zp.zip_filename).stem / "source" / "File1.txt"
 
     assert extracted_path.exists()
     assert extracted_path.read_text() == "This is file 1."
@@ -37,7 +37,7 @@ def test_file_extraction_to_stdout(tmp_path, capsys):
     zp = _make_zip_archive(tmp_path)
     assert zp.exists()
 
-    _run_cli_command(f"zippathlib {zp.zip_file} source/File1.txt -x -")
+    _run_cli_command(f"zippathlib {zp.zip_filename} source/File1.txt -x -")
 
     assert capsys.readouterr().out == "This is file 1.\n"
 
@@ -63,7 +63,7 @@ def test_file_extraction_limit(tmp_path, capsys):
 
     outdir = tmp_path / "out"
     outdir.mkdir()
-    _run_cli_command(f"zippathlib {zp.zip_file} {this_zp._path} -x {outdir} --limit 100")
+    _run_cli_command(f"zippathlib {zp.zip_filename} {this_zp._path} -x {outdir} --limit 100")
 
     assert capsys.readouterr().out == (
         "Error: ValueError: Total file size 500 bytes exceeds extract limit 100 bytes\n"

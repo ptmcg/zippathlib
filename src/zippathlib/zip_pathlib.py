@@ -106,7 +106,7 @@ class _ZipWriteFile:
 
         # Open the ZIP file in append mode
         with zipfile.ZipFile(
-            self.zip_path.zip_file,
+            self.zip_path.zip_filename,
             mode='a',
             compression=zipfile.ZIP_DEFLATED,
             compresslevel=9,
@@ -162,19 +162,19 @@ class ZipPath(PurePosixPath):
             print("File exists!")
     """
 
-    def __init__(self, zip_file: str | PurePath, path: str = '', mode="r") -> None:
+    def __init__(self, zip_filename: str | PurePath, path: str = '', mode="r") -> None:
         """
         Initialize a ZipPath object.
 
         Args:
-            zip_file: Path to the ZIP file
+            zip_filename: Path to the ZIP file
             path: Path within the ZIP file (default: root of the ZIP)
         """
         super().__init__(path)
-        self.zip_file = Path(zip_file)
+        self.zip_filename = Path(zip_filename)
         self._path = path
         self._mode = mode
-        self._zipfile_stat = os.stat(self.zip_file)
+        self._zipfile_stat = os.stat(self.zip_filename)
 
     @classmethod
     def at_path(cls, source_path: Path, dest_path: Path = None) -> ZipPath:
@@ -226,11 +226,11 @@ class ZipPath(PurePosixPath):
 
     def __str__(self) -> str:
         """Return a string representation of the path."""
-        return f"{self.zip_file}::{self._path}"
+        return f"{self.zip_filename}::{self._path}"
 
     def __repr__(self) -> str:
         """Return a detailed string representation of the path."""
-        return f"ZipPath('{self.zip_file}', '{self._path}')"
+        return f"ZipPath('{self.zip_filename}', '{self._path}')"
 
     def _get_zipfile(self) -> zipfile.ZipFile:
         """
@@ -243,9 +243,9 @@ class ZipPath(PurePosixPath):
             FileNotFoundError: If the ZIP file doesn't exist
             zipfile.BadZipFile: If the file is not a valid ZIP file
         """
-        if not self.zip_file.exists():
-            raise FileNotFoundError(f"ZIP file not found: '{self.zip_file}'")
-        return zipfile.ZipFile(self.zip_file, mode=self._mode)
+        if not self.zip_filename.exists():
+            raise FileNotFoundError(f"ZIP file not found: '{self.zip_filename}'")
+        return zipfile.ZipFile(self.zip_filename, mode=self._mode)
 
     def _normalize_path(self, path: str) -> str:
         """
@@ -271,7 +271,7 @@ class ZipPath(PurePosixPath):
             A new ZipPath object with the joined path
         """
         new_path = PurePosixPath(self._path).joinpath(*paths)
-        return ZipPath(self.zip_file, str(new_path), mode=self._mode)
+        return ZipPath(self.zip_filename, str(new_path), mode=self._mode)
 
     def __truediv__(self, key: str) -> ZipPath:
         """
@@ -292,7 +292,7 @@ class ZipPath(PurePosixPath):
         Returns:
             True if the path exists, False otherwise
         """
-        if not self.zip_file.exists():
+        if not self.zip_filename.exists():
             return False
 
         try:
@@ -325,7 +325,7 @@ class ZipPath(PurePosixPath):
         Returns:
             True if the path is a file, False otherwise
         """
-        if not self.zip_file.exists():
+        if not self.zip_filename.exists():
             return False
 
         try:
@@ -342,7 +342,7 @@ class ZipPath(PurePosixPath):
         Returns:
             True if the path is a directory, False otherwise
         """
-        if not self.zip_file.exists():
+        if not self.zip_filename.exists():
             return False
 
         if self.is_root():
@@ -414,9 +414,9 @@ class ZipPath(PurePosixPath):
                     if len(parts) > 1:  # This is a subdirectory
                         if first_part not in seen_dirs:
                             seen_dirs.add(first_part)
-                            yield ZipPath(self.zip_file, f"{prefix}{first_part}", mode=self._mode)
+                            yield ZipPath(self.zip_filename, f"{prefix}{first_part}", mode=self._mode)
                     else:  # This is a file
-                        yield ZipPath(self.zip_file, f"{prefix}{first_part}", mode=self._mode)
+                        yield ZipPath(self.zip_filename, f"{prefix}{first_part}", mode=self._mode)
 
     def glob(self, pattern: str) -> Iterator[ZipPath]:
         """
@@ -448,7 +448,7 @@ class ZipPath(PurePosixPath):
 
                     # Check if it matches the pattern
                     if fnmatch.fnmatch(rel_path, pattern):
-                        yield ZipPath(self.zip_file, f"{prefix}{rel_path}")
+                        yield ZipPath(self.zip_filename, f"{prefix}{rel_path}")
 
     def riterdir(self) -> Iterator[ZipPath]:
         """
@@ -616,7 +616,7 @@ class ZipPath(PurePosixPath):
             A ZipPath object pointing to the parent directory
         """
         parent_path = str(PurePath(self._path).parent)
-        return ZipPath(self.zip_file, parent_path, mode=self._mode)
+        return ZipPath(self.zip_filename, parent_path, mode=self._mode)
 
     @functools.cached_property
     def _info(self) -> zipfile.ZipInfo | None:
@@ -720,7 +720,7 @@ class ZipPath(PurePosixPath):
         if isinstance(workdir, str):
             workdir = Path(workdir)
 
-        dest = workdir / self.zip_file.name
+        dest = workdir / self.zip_filename.name
 
         if deduped := self.get_deduplicated_entries():
             with zipfile.ZipFile(
@@ -738,9 +738,9 @@ class ZipPath(PurePosixPath):
 
             if replace:
                 if keep:
-                    shutil.copy2(dest, self.zip_file)
+                    shutil.copy2(dest, self.zip_filename)
                 else:
-                    shutil.move(dest, self.zip_file)
+                    shutil.move(dest, self.zip_filename)
             else:
                 if not keep:
                     dest.unlink()

@@ -48,7 +48,7 @@ def test_basic_path_properties(test_path: str, properties:dict[str, bool], tmp_p
         assert getattr(zp, prop)() == expected, f"failed to get {prop}() property of {test_path!r}"
 
     if test_path:
-        assert zp.parent == ZipPath(zp.zip_file, str(PurePath(test_path).parent))
+        assert zp.parent == ZipPath(zp.zip_filename, str(PurePath(test_path).parent))
 
     if test_path and properties["exists"]:
         file_stat = zp.stat()
