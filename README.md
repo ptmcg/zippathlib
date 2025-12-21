@@ -51,7 +51,7 @@ but it is primarily for read support in existing ZIP files. It doesn't provide a
 After installing it, the `zippathlib` module can be run from the command line with `python -m zippathlib` or just `zippathlib`.
 
     $ zippathlib -h
-    usage: zippathlib [-h] [--tree] [--extract [OUTPUTDIR]] [--limit LIMIT]
+    usage: zippathlib [-h] [-V] [--tree] [-x [OUTPUTDIR]] [--limit LIMIT] [--check {duplicates,limit,d,l}] [--purge]
                       zip_file [path_within_zip]
     
     positional arguments:
@@ -62,13 +62,15 @@ After installing it, the `zippathlib` module can be run from the command line wi
       -h, --help            show this help message and exit
       -V, --version         show program's version number and exit
       --tree                list all files in a tree-like format
-      --extract, -x [OUTPUTDIR]
-                            extract files from zip file to a directory or '-' for
-                            stdout, default is '.'
-      --limit LIMIT         guard value against malicious ZIP files that uncompress
-                            to excessive sizes; specify as an integer or float value
-                            optionally followed by a multiplier suffix K,M,G,T,P,E,
-                            or Z; default is 2.00G
+      -x, --extract [OUTPUTDIR]
+                            extract files from zip file to a directory or '-' for stdout,
+                            default is '.'
+      --limit LIMIT         guard value against malicious ZIP files that uncompress to excessive
+                            sizes; specify as an integer or float value optionally followed by a
+                            multiplier suffix K,M,G,T,P,E, or Z; default is 2.00T
+      --check {duplicates,limit,d,l}
+                            check ZIP file for duplicates, or for files larger than LIMIT
+      --purge               purge ZIP file of duplicate file entries
 
 ### List the root directory of a ZIP archive
 

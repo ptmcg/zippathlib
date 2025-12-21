@@ -17,6 +17,10 @@ v0.4.0
     ZIP archive, copying only the latest version of each file, and then replacing
     the current ZIP archive with the purged copy
 
+- Added CLI `--check` option, support for checking for large files or duplicates.
+
+- Added CLI `--purge` option, support for purging duplicates, retaining only the latest.
+
 
 v0.3.0
 ------

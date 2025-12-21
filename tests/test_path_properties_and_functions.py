@@ -1,4 +1,4 @@
-import tempfile
+import itertools
 from pathlib import PurePath
 import stat
 
@@ -121,8 +121,6 @@ def test_file_size_overwrite(tmp_path):
 
 
 def test_file_sizes(tmp_path):
-    import itertools
-
     zp = _make_zip_archive(tmp_path)
 
     this_zp = zp / "scratch"
@@ -148,3 +146,36 @@ def test_file_sizes(tmp_path):
     make_file("sub1/sub2/sub3", 100)
     assert this_zp.total_size() == 600
     assert (this_zp / "sub1/sub2").total_size() == 300
+
+
+def test_file_report_large_files(tmp_path):
+    zp = _make_zip_archive(tmp_path)
+
+    this_zp = zp / "scratch"
+    file_count = itertools.count(1)
+
+    def make_file(path: str, size: int) -> ZipPath:
+        new_zp = this_zp / path / f"file_{next(file_count)}.txt"
+        new_zp.write_text("A" * size)
+        return new_zp
+
+    # build subdirs with known file sizes
+    make_file("sub1", 100)
+    make_file("sub1", 200)
+    make_file("sub1/sub2", 100)
+    make_file("sub1/sub2/sub3", 100)
+
+    files_greater_than_100 = zp.scan_for_large_files(cutoff_size=100)
+    assert files_greater_than_100 == [('scratch/sub1/file_2.txt', 200)]
+
+    files_greater_than_10 = zp.scan_for_large_files(cutoff_size=10)
+    assert files_greater_than_10 == [
+        ('scratch/sub1/sub2/sub3/file_4.txt', 100),
+        ('scratch/sub1/sub2/file_3.txt', 100),
+        ('scratch/sub1/file_2.txt', 200),
+        ('scratch/sub1/file_1.txt', 100),
+        ('source/subfolder/File4.txt', 32),
+        ('source/File3.txt', 23),
+        ('source/File2.txt', 15),
+        ('source/File1.txt', 15)
+    ]

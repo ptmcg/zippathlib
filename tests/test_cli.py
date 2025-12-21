@@ -1,6 +1,6 @@
 import pytest
 
-from zippathlib import ZipPath
+from zippathlib import ZipPath, ZipPathDuplicateFileWarning
 from .util import _make_zip_archive
 
 
@@ -61,6 +61,11 @@ def test_file_extraction_limit(tmp_path, capsys):
     make_file("sub1/sub2", 100)
     make_file("sub1/sub2/sub3", 100)
 
+    _run_cli_command(f"zippathlib {zp.zip_filename} {this_zp._path} --check l --limit 100")
+    assert capsys.readouterr().out == (
+        "Large files found\nscratch/sub1/file_2.txt - 200 bytes\n"
+    )
+
     outdir = tmp_path / "out"
     outdir.mkdir()
     _run_cli_command(f"zippathlib {zp.zip_filename} {this_zp._path} -x {outdir} --limit 100")
@@ -68,3 +73,30 @@ def test_file_extraction_limit(tmp_path, capsys):
     assert capsys.readouterr().out == (
         "Error: ValueError: Total file size 500 bytes exceeds extract limit 100 bytes\n"
     )
+
+def test_check_for_duplicate_files_and_purge(tmp_path, capsys):
+    zp = _make_zip_archive(tmp_path)
+
+    scratch = zp / "scratch" / "scratch.txt"
+    scratch.write_text("A" * 100)
+    assert scratch.size() == 100
+    with pytest.warns(ZipPathDuplicateFileWarning):
+        scratch.write_text("A" * 50)
+    assert scratch.size() == 50
+    with pytest.warns(ZipPathDuplicateFileWarning):
+        scratch.write_text("A" * 10)
+    assert scratch.size() == 10
+
+    assert zp.scan_for_duplicates() == [
+        ("scratch/scratch.txt", 3)
+    ], "expected duplicates not found"
+
+    _run_cli_command(f"zippathlib {zp.zip_filename} --check d --limit 100")
+    assert capsys.readouterr().out == (
+        "Duplicate files found\nscratch/scratch.txt (3)\n"
+    )
+
+    # now purge the duplicates
+    _run_cli_command(f"zippathlib {zp.zip_filename} --purge")
+    assert zp.scan_for_duplicates() == []
+    assert scratch.size() == 10

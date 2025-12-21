@@ -1,4 +1,5 @@
 import argparse
+import sys
 import zipfile
 from pathlib import Path
 
@@ -7,7 +8,7 @@ from rich.tree import Tree as RichTree
 
 from zippathlib import ZipPath
 
-DEFAULT_SIZE_LIMIT = 2 * 1024**3
+DEFAULT_SIZE_LIMIT = 2 * 1024**3  # 2GB
 
 def get_version() -> str:
     from . import __version__
@@ -41,6 +42,16 @@ def make_parser() -> argparse.ArgumentParser:
              " optionally followed by a multiplier suffix K,M,G,T,P,E, or Z;"
              f" default is {_i2h(DEFAULT_SIZE_LIMIT).rstrip('B')}"
     )
+    parser.add_argument(
+        "--check",
+        choices=["duplicates", "limit", "d", "l"],
+        help="check ZIP file for duplicates, or for files larger than LIMIT"
+    )
+    parser.add_argument(
+        "--purge",
+        action="store_true",
+        help="purge ZIP file of duplicate file entries",
+    )
 
     return parser
 
@@ -69,7 +80,7 @@ def _h2i(s: str) -> int:
             break
     return int(n * float(s[:-1]))
 
-def _extract_file(zippath:ZipPath, outputdir: Path | None = None):
+def _extract_file(zippath:ZipPath, outputdir: Path | str | None = None):
     """Extract a file from the zip archive."""
     if not zippath.exists():
         raise FileNotFoundError(f"File {str(zippath)!r} not found in zip archive.")
@@ -103,7 +114,7 @@ def _construct_tree(zippath:ZipPath) -> RichTree:
     return ret
 
 
-def main():
+def main() -> int:
     args =  make_parser().parse_args()
 
     # unpack positional args into locals
@@ -116,7 +127,7 @@ def main():
         # will raise an exception and we're done
         zipfile.ZipFile(zip_filename)
 
-        zip_path = ZipPath(zip_filename)
+        zip_path: ZipPath = ZipPath(zip_filename)
 
         if "*" in path_within_zip:
             # Handle * wildcard for path_within_zip
@@ -133,6 +144,36 @@ def main():
             if args.tree:
                 # print pretty tree of ZIP contents
                 rprint(_construct_tree(zip_path))
+
+            elif args.check:
+                if args.check[:1] == "d":
+                    duplicates = zip_path.scan_for_duplicates()
+                    if duplicates:
+                        print("Duplicate files found")
+                        for fname, count in duplicates:
+                            print(f"{fname} ({count})")
+                        return 1
+
+                elif  args.check[:1] == "l":
+                    large_files = zip_path.scan_for_large_files(args.limit)
+                    if large_files:
+                        print("Large files found")
+                        for fname, size in large_files:
+                            print(f"{fname} - {_i2h(size)}")
+                        return 1
+
+            elif args.purge:
+                # guard against files > args.limit in size
+                duplicates:  list[tuple[str, int]] = zip_path.scan_for_duplicates()
+                if duplicates:
+                    deduped: list[zipfile.ZipInfo] = zip_path.get_deduplicated_entries()
+                    if any(entry.file_size > args.limit for entry in deduped):
+                        raise ValueError(f"Files larger than {_i2h(args.limit)} were found.")
+
+                    zip_path.purge_duplicates(replace=True)
+                    print("Rebuilt ZIP file with duplicate entries removed")
+                else:
+                    print("No duplicate file entries found")
 
             elif args.outputdir:
                 # extracting one or more files/directories
@@ -180,6 +221,9 @@ def main():
     except Exception as e:
         print(f"Error: {type(e).__name__}: {e}")
         # raise
+        return 1
+
+    return 0
 
 
 if __name__ == '__main__':

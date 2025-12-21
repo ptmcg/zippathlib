@@ -688,6 +688,13 @@ class ZipPath(PurePosixPath):
         """Not supported."""
         raise NotImplementedError(f"{type(self).__name__} does not support changing file permissions")
 
+    def scan_for_large_files(self, cutoff_size: int) -> list[tuple[str, int]]:
+        large_files = []
+        for f in self.riterdir():
+            if f.is_file() and f.size() > cutoff_size:
+                large_files.append((f._path, f.size()))
+        return large_files
+
     def scan_for_duplicates(self) -> list[tuple[str, int]]:
         from collections import Counter
         with self._get_zipfile() as zf:
@@ -708,9 +715,15 @@ class ZipPath(PurePosixPath):
             workdir: Path | str = None,
             replace: bool = False,
             keep: bool = False,
-    ) -> zipfile.ZipFile:
+    ):
         """
         Remove duplicate versions of any files.
+
+        Since ZIP files do not support actual deletion of entries, this requires creating
+        a new ZIP archive, and only copying the deduplicated files into it.
+
+        Since this involves extracting files from the original ZIP, we also need to
+        guard against malicious ZIP bomb files.
         """
         import tempfile
         import shutil
@@ -722,7 +735,12 @@ class ZipPath(PurePosixPath):
 
         dest = workdir / self.zip_filename.name
 
-        if deduped := self.get_deduplicated_entries():
+        dupes = self.scan_for_duplicates()
+        if not dupes:
+            return
+
+        deduped: list[zipfile.ZipInfo] = self.get_deduplicated_entries()
+        if deduped:
             with zipfile.ZipFile(
                 dest,
                 mode="w",
@@ -744,5 +762,3 @@ class ZipPath(PurePosixPath):
             else:
                 if not keep:
                     dest.unlink()
-
-        return new_zf
