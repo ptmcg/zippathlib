@@ -14,7 +14,7 @@ from zippathlib.__main__ import _i2h, _h2i
     (1500000, "1.43MB"),
     (1500000000, "1.40GB"),
 ])
-def test_i2h(n, expected):
+def test_i2h(n: int, expected: str):
     assert _i2h(n) == expected
 
 @pytest.mark.parametrize("s, expected", [
@@ -33,7 +33,7 @@ def test_i2h(n, expected):
     ("1.43MB", 1499463), # 1.43 * 1024 * 1024 = 1499463.68 -> 1499463
     ("1.40GB", 1503238553), # 1.40 * 1024**3 = 1503238553.6 -> 1503238553
 ])
-def test_h2i(s, expected):
+def test_h2i(s: str, expected: int):
     assert _h2i(s) == expected
 
 def test_roundtrip():
