@@ -67,7 +67,7 @@ After installing it, the `zippathlib` module can be run from the command line wi
                             default is '.'
       --limit LIMIT         guard value against malicious ZIP files that uncompress to excessive
                             sizes; specify as an integer or float value optionally followed by a
-                            multiplier suffix K,M,G,T,P,E, or Z; default is 2.00T
+                            multiplier suffix K,M,G,T,P,E, or Z; default is 2.00G
       --check {duplicates,limit,d,l}
                             check ZIP file for duplicates, or for files larger than LIMIT
       --purge               purge ZIP file of duplicate file entries
