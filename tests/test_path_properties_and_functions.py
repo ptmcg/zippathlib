@@ -85,18 +85,18 @@ def test_file_size_overwrite(tmp_path):
         ("scratch/scratch.txt", 3)
     ], "expected duplicates not found"
 
-    assert list(f._path for f in zp.riterdir()) == [
+    assert sorted(f._path for f in zp.riterdir()) == [
         '',
         'scratch',
         'scratch/scratch.txt',
         'scratch/scratch.txt',
         'scratch/scratch.txt',
         'source',
+        'source/File1.txt',
+        'source/File2.txt',
+        'source/File3.txt',
         'source/subfolder',
         'source/subfolder/File4.txt',
-        'source/File3.txt',
-        'source/File2.txt',
-        'source/File1.txt'
     ]
 
     workdir = tmp_path / "workdir"
@@ -104,16 +104,16 @@ def test_file_size_overwrite(tmp_path):
 
     zp.purge_duplicates(workdir=workdir, replace=True, keep=True)
     assert zp.scan_for_duplicates() == []
-    assert list(f._path for f in zp.riterdir()) == [
+    assert sorted(f._path for f in zp.riterdir()) == [
         '',
         'scratch',
         'scratch/scratch.txt',
         'source',
+        'source/File1.txt',
+        'source/File2.txt',
+        'source/File3.txt',
         'source/subfolder',
         'source/subfolder/File4.txt',
-        'source/File3.txt',
-        'source/File2.txt',
-        'source/File1.txt'
     ]
 
     scratch = zp / "scratch" / "scratch.txt"
@@ -168,14 +168,14 @@ def test_file_report_large_files(tmp_path):
     files_greater_than_100 = zp.scan_for_large_files(cutoff_size=100)
     assert files_greater_than_100 == [('scratch/sub1/file_2.txt', 200)]
 
-    files_greater_than_10 = zp.scan_for_large_files(cutoff_size=10)
+    files_greater_than_10 = sorted(zp.scan_for_large_files(cutoff_size=10))
     assert files_greater_than_10 == [
-        ('scratch/sub1/sub2/sub3/file_4.txt', 100),
-        ('scratch/sub1/sub2/file_3.txt', 100),
-        ('scratch/sub1/file_2.txt', 200),
         ('scratch/sub1/file_1.txt', 100),
-        ('source/subfolder/File4.txt', 32),
-        ('source/File3.txt', 23),
+        ('scratch/sub1/file_2.txt', 200),
+        ('scratch/sub1/sub2/file_3.txt', 100),
+        ('scratch/sub1/sub2/sub3/file_4.txt', 100),
+        ('source/File1.txt', 15),
         ('source/File2.txt', 15),
-        ('source/File1.txt', 15)
+        ('source/File3.txt', 23),
+        ('source/subfolder/File4.txt', 32),
     ]
