@@ -58,11 +58,12 @@ def make_parser() -> argparse.ArgumentParser:
 def _i2h(n: int) -> str:
     if n < 1024 * 1024:
         return f"{n:,} bytes"
+    n /= 1024
     for prefix in "MGTPEZ":
         n /= 1024
         if n < 1024:
             break
-    return f"{n:.2f}{prefix}B"
+    return f"{n:,.2f}{prefix}B"
 
 def _h2i(s: str) -> int:
     if not s:
