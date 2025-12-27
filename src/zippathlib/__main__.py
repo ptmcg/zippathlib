@@ -52,6 +52,12 @@ def make_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="purge ZIP file of duplicate file entries",
     )
+    parser.add_argument(
+        "--new",
+        dest="create_new_zip",
+        action="store_true",
+        help="create new ZIP file"
+    )
 
     return parser
 
@@ -125,8 +131,16 @@ def main() -> int:
 
     try:
         # See if zip_filename is actually a ZIP file - if not, this
-        # will raise an exception and we're done
-        zipfile.ZipFile(zip_filename)
+        # will raise an exception and we'll either create a new
+        # archive or just reraise
+        try:
+            zipfile.ZipFile(zip_filename)
+        except FileNotFoundError:
+            if args.create_new_zip:
+                zip_file_path = Path(zip_filename)
+                ZipPath.create(zip_file_path)
+            else:
+                raise
 
         zip_path: ZipPath = ZipPath(zip_filename)
 
@@ -199,6 +213,10 @@ def main() -> int:
                         else:
                             # make directory, in case it is an empty dir
                             (outputdir / file._path).mkdir(parents=True, exist_ok=True)
+
+            elif args.create_new_zip:
+                print(f"ZIP archive {zip_filename!r} exists")
+                return 1
 
             else:
                 # just browsing

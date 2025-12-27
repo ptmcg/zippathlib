@@ -177,7 +177,7 @@ class ZipPath(PurePosixPath):
         self._zipfile_stat = os.stat(self.zip_filename)
 
     @classmethod
-    def at_path(cls, source_path: Path, dest_path: Path = None) -> ZipPath:
+    def at_path(cls, source_path: Path | None, dest_path: Path = None) -> ZipPath:
         """
         ZIP archive creator, returning a ZipPath object for the newly-created ZIP archive
         """
@@ -196,15 +196,20 @@ class ZipPath(PurePosixPath):
                 compression=zipfile.ZIP_DEFLATED,
                 compresslevel=9,
             ) as new_zf:
-                for file in source_path.rglob("*"):
-                    if file.is_file():
-                        # print(f"adding {file}")
-                        new_zf.write(
-                            file,
-                            file.relative_to(source_path.parent),
-                        )
+                if source_path is not None:
+                    for file in source_path.rglob("*"):
+                        if file.is_file():
+                            # print(f"adding {file}")
+                            new_zf.write(
+                                file,
+                                file.relative_to(source_path.parent),
+                            )
             ret = ZipPath(dest)
             return ret
+
+    @classmethod
+    def create(cls, new_zip_path: Path) -> ZipPath:
+        return cls.at_path(None, new_zip_path)
 
     @property
     def _depth(self):

@@ -100,3 +100,26 @@ def test_check_for_duplicate_files_and_purge(tmp_path, capsys):
     _run_cli_command(f"zippathlib {zp.zip_filename} --purge")
     assert zp.scan_for_duplicates() == []
     assert scratch.size() == 10
+
+
+def test_cli_create_new_zip(tmp_path):
+    new_zip = tmp_path / "new_archive.zip"
+    assert not new_zip.exists()
+
+    _run_cli_command(f"zippathlib {new_zip} --new")
+
+    assert new_zip.exists()
+    # verify it is a valid zip file
+    import zipfile
+    assert zipfile.is_zipfile(new_zip)
+
+
+def test_cli_create_new_zip_already_exists(tmp_path, capsys):
+    zp = _make_zip_archive(tmp_path)
+    existing_zip = zp.zip_filename
+    assert zp.exists()
+
+    _run_cli_command(f"zippathlib {existing_zip} --new")
+
+    assert f"ZIP archive {str(existing_zip)!r} exists\n" in capsys.readouterr().out
+

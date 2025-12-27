@@ -4,7 +4,13 @@ Change Log
 
 v0.6.0
 ------
-(TBD)
+- Added `ZipPath.create(file_path)` classmethod to create a new empty ZIP archive,
+  returning a `ZipPath` to the new ZIP. If the file already exists, a `ZipPath` to that
+  file is returned.
+
+- Added `--new` command line option to create a new empty ZIP archive (using the new
+  `ZipPath.create()` classmethod). If the archive already exists, displays an
+  "already exists" message.
 
 
 v0.5.0
