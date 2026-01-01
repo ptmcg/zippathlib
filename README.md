@@ -101,7 +101,7 @@ After installing it, the `zippathlib` module can be run from the command line wi
     
     Copyright (c) 2025 Paul McGuire
 
-Permission is hereby granted, free of charge, to a...
+    Permission is hereby granted, free of charge, to a...
 
 ### Extract a file from a ZIP archive to the local filesystem
 
